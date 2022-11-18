@@ -1,0 +1,29 @@
+[
+ {
+  "name": "Textract",
+  "description": "",
+  "group": "Custom",
+  "icon": "RiCheckboxBlankCircleFill",
+  "click": null,
+  "events": null,
+  "configured": true,
+  "inputs": [
+   {
+    "id": "file",
+    "label": "file",
+    "service": "loko_extract",
+    "to": "output"
+   }
+  ],
+  "outputs": [
+   {
+    "id": "output",
+    "label": "output"
+   }
+  ],
+  "options": {
+   "values": {},
+   "args": []
+  }
+ }
+]
