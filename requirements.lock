@@ -19,6 +19,7 @@ idna==2.10
 joblib==1.2.0
 langdetect==1.0.9
 Levenshtein==0.20.8
+loko-client==0.0.1.dev3
 loko-extensions==0.0.2
 lxml==4.9.1
 multidict==6.0.2

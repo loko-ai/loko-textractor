@@ -49,3 +49,4 @@ uvloop == 0.17.0
 websockets == 10.4
 XlsxWriter == 3.0.3
 yarl == 1.8.1
+loko-client==0.0.1.dev3

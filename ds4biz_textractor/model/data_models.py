@@ -4,30 +4,30 @@ from ds4biz_textractor.utils.logger_utils import logger
 
 
 class PreprocessingRequest:
-    def __init__(self, zoom_level: List[str] = None, resize_dim: tuple = None, interpolation_mode: List[str] = None, dpi: List[str] = None):
-        self.resize_zoom = float(zoom_level[0]) if zoom_level else None
+    def __init__(self, zoom_level: float = None, resize_dim: tuple = None, interpolation_mode: int = None, dpi: int = None):
+        self.resize_zoom = zoom_level
         # self.resize_dim = resize_dim
-        self.interpolation_mode = int(interpolation_mode[0]) if interpolation_mode else None
-        self.dpi = int(dpi[0]) if dpi else None
+        self.interpolation_mode = interpolation_mode
+        self.dpi = dpi
         logger.debug("preproocessing configs: %s" % self.__dict__)
 
 
 class AnalyzerRequest:
     def __init__(self,
-                 vocab_file: List[str] = None,
-                 patterns_file: List[str] = None,
-                 lang: List[str] = None,
-                 psm: List[str] = None,
-                 oem: List[str] = None,
-                 whitelist: List[str] = None,
-                 blacklist: List[str] = None):
-        self.vocab_file = vocab_file[0] if vocab_file else None
-        self.patterns_file = patterns_file[0] if patterns_file else None
-        self.lang = lang[0] if lang else None
-        self.psm = int(psm[0]) if psm else None
-        self.oem = int(oem[0]) if oem else None
-        self.whitelist = whitelist[0] if whitelist else None
-        self.blacklist = blacklist[0] if blacklist else None
+                 vocab_file: str = None,
+                 patterns_file: str = None,
+                 lang: str = None,
+                 psm: int = None,
+                 oem: int = None,
+                 whitelist: str = None,
+                 blacklist: str = None):
+        self.vocab_file = vocab_file
+        self.patterns_file = patterns_file
+        self.lang = lang
+        self.psm = psm
+        self.oem = oem
+        self.whitelist = whitelist
+        self.blacklist = blacklist
 
 
 class PostprocessingRequest:

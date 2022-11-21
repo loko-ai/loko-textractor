@@ -607,6 +607,7 @@ async def settings(value, args):
                       blacklist=blacklist, vocab_file=vocab_name, patterns_file=patterns_name)
         params = {k: v for k, v in params.items() if v != "" and v != None}
         print("PARAMS", params)
+        logger.debug(params)
         data = AnalyzerRequest(**params).__dict__
         logger.debug("analyzer initialized")
         json_fs_dao = JSONFSDAO(ANALYZER_PATH)
@@ -618,6 +619,8 @@ async def settings(value, args):
 @app.post("/loko_delete_settings")
 @extract_value_args()
 async def settings(value, args):
+
+    logger.debug(("ARGS",args))
 
     aname = args.get("analyzer_name_delete")
     pname = args.get("preproc_name_delete")
@@ -631,7 +634,7 @@ async def settings(value, args):
 
 
         if aname in list(json_fs_dao.all()):
-
+            json_fs_dao.remove(aname)
             logger.debug(ret_anal)
             vocab_name = "vocab_" + aname + "_anal"
 
@@ -648,7 +651,7 @@ async def settings(value, args):
             if patterns_name in list(txt_fs_dao.all()):
                 txt_fs_dao.remove(patterns_name)
                 logger.debug(patterns_name)
-
+            ret_anal="analyzer deleted {}".format(aname)
         else:
             ret_anal = "analyzer configuration '{anal}' already deleted".format(anal=aname)
 
@@ -657,9 +660,10 @@ async def settings(value, args):
         json_fs_dao = JSONFSDAO(PREPROCESSING_PATH)
         if pname in list(json_fs_dao.all()) :
             json_fs_dao.remove(pname)
+            ret_preproc = "preprocessing deleted {}".format(pname)
         else:
-            ret_preproc = "preprocessing configuration '{preproc}' already deleted".format(
-                preproc=pname)
+            ret_preproc = "preprocessing configuration '{}' already deleted".format(
+                pname)
 
     if not aname and not pname:
         return json("No Configuration to delete specified... Select at least one analyzer/preprocessor")
