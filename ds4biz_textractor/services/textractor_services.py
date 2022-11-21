@@ -2,11 +2,12 @@ import warnings
 from ast import literal_eval
 from io import BytesIO
 
+from loko_client.business.fs_client import AsyncFSClient
 from loko_extensions.business.decorators import extract_value_args
 
 # from ds4biz_textractor.business.converters import HOCR
 from ds4biz_textractor.config.app_config import PREPROCESSING_PATH, ANALYZER_PATH, POSTPROCESSING_PATH, \
-    PORT
+    PORT, GATEWAY, VOCABULARY_PATH, PATTERNS_PATH
 from ds4biz_textractor.dao.file_system_dao import JSONFSDAO, TXTFSDAO
 from ds4biz_textractor.model.data_models import EvaluateResponse, PreprocessingRequest, AnalyzerRequest, \
     PostprocessingRequest
@@ -30,6 +31,8 @@ from ds4biz_textractor.utils.pom_utils import get_pom_major_minor
 
 logger.debug("start initializing...")
 
+loko_cli = AsyncFSClient(GATEWAY)
+
 name = "ds4biz-textract"
 app = Sanic(name)
 swagger_blueprint.url_prefix = "/api"
@@ -42,9 +45,11 @@ app.blueprint(swagger_blueprint)
 from sanic.response import text
 
 
+
+
+
 # @app.exception(Exception)
 # async def generic_exception(request, exception):
-#     j = dict(error=str(exception))
 #     logging.debug(j)
 #     if isinstance(exception, NotFound):
 #         return response.json(j, status=404)
@@ -461,13 +466,44 @@ async def list_files(request, type):
 @app.post("/loko_extract")
 @extract_value_args(file=True)
 async def loko_extract(file, args):
-    configs = get_configurations_files(args)
+
+    accept_ct = args.get("accept", "application/json")
+    analyzer = args.get("analyzer")
+    pre_processing = args.get("pre_processing")
+    force_ocr = args.get("force_ocr")
+
+
+    if analyzer:
+        json_fs_dao = JSONFSDAO(ANALYZER_PATH)
+        if analyzer not in list(json_fs_dao.all()):
+            logger.warning(
+                'Analyzer {anal} not anymore available. Extraction will be performed without considering '
+                'it.'.format(
+                    anal=analyzer))
+            analyzer = None
+
+    if pre_processing:
+
+        json_fs_dao = JSONFSDAO(PREPROCESSING_PATH)
+
+        if pre_processing not in list(json_fs_dao.all()):
+            logger.warning(
+                "Pre-processing {preproc} not anymore available. Extraction will be performed without considering it.".format(
+                    preproc=pre_processing))
+            pre_processing = None
+
+    params = dict(force_ocr=str(force_ocr).lower(), analyzer_configs=analyzer,
+                  preprocessing_configs=pre_processing,
+                  # postprocessing_configs=post_processing
+                  )
+
+    configs = get_configurations_files(params)
     logger.debug("selected config: %s", configs)
     if isinstance(file, list):
         file = file[0]
-    accept_ct = 'application/json'
 
-    force_extraction = eval(args.get("force_ocr_extraction", "false").capitalize())
+
+    force_extraction = eval(params.get("force_ocr_extraction", "false").capitalize())
     res = extract_file(file, force_extraction, configs=configs)
 
     # ret = response_converter(StreamString((el['text'] async for el in res)), accept_ct)
@@ -479,7 +515,167 @@ async def loko_extract(file, args):
     # response = await request.respond()
     # end=time.time()
     # print("time: "+ str(end-start))
+
+    return json(dict(path=file.name, content=ret))
+
+
+
+@app.post("/loko_settings")
+@extract_value_args()
+async def settings(value, args):
+
+    settings_type = args.get("settings_type")
+
+
+
+    if settings_type == "Pre-Processing":
+
+        interpolation_mode = args.get("interpolation_mode")
+        dpi = args.get("dpi")
+        name = args.get("new_preprocessing_name")
+        zoom_level = args.get("zoom_level")
+
+        logger.debug("creating pre-processing...")
+        dpi = int(float(dpi))
+        zoom_level = float(
+            zoom_level)  # float(zoom_level.replace(",", ".")) if "," in zoom_level else float(zoom_level) ##---->inutile, non si possono inserire , o stringhe o altri caratteri
+        interpl_mode = int(interpolation_mode.split(":")[0])
+
+        params = dict(dpi=dpi,
+                      zoom_level=zoom_level,
+                      interpolation_mode=interpl_mode)
+
+        logger.debug("saving pre-processing %s" % (name))
+        logger.debug("preprocessing_")
+        data = PreprocessingRequest(**params).__dict__
+        logger.debug("pre-processing initialized")
+        json_fs_dao = JSONFSDAO(PREPROCESSING_PATH)
+        json_fs_dao.save(data, name)
+        logger.debug("pre-processing saved")
+
+        return json("pre-processing configuration saved as '%s'" % name)
+
+
+    elif settings_type == "Analyzer":
+
+        vocab_name = None
+        patterns_name = None
+        oem_type = args.get("oem_type")
+        psm_type = args.get("psm_type")
+        name = args.get("new_analyzer_name")
+        whitelist = args.get("whitelist")
+        blacklist = args.get("blacklist")
+        lang = args.get("lang")
+        patterns_file = args.get("patterns_file")
+        vocab_file = args.get("vocab_file")
+
+
+
+
+        logger.debug("creating analyzer...")
+        oem = int(oem_type.split(":")[0])
+        psm = int(psm_type.split(":")[0])
+        lang = lang if lang != "auto" else None
+        if vocab_file != "":
+            logger.debug("creating vocabulary file")
+            vocab_name = "vocab_" + name + "_anal"
+            v_data = loko_cli.read(vocab_file["path"])
+            v_data = ','.join(v_data.split('\n'))
+            logger.debug("saving file %s (type %s)" % (name, type))
+            path = VOCABULARY_PATH
+            txt_fs_dao = TXTFSDAO(path)
+            data = v_data
+            data = '\n'.join(data[0].split(','))
+            txt_fs_dao.save(data, name)
+            logger.debug("file saved")
+
+
+
+        if patterns_file != "":
+            logger.debug("creating patterns file")
+            patterns_name = "patterns_" + name + "_anal"
+            p_data = loko_cli.read(patterns_file["path"])
+            p_data = ','.join(p_data.split('\n'))
+            path = PATTERNS_PATH
+            txt_fs_dao = TXTFSDAO(path)
+            data = p_data
+            data = '\n'.join(data[0].split(','))
+            txt_fs_dao.save(data, name)
+            logger.debug("file saved")
+
+        params = dict(oem=oem, psm=psm, lang=lang, whitelist=whitelist,
+                      blacklist=blacklist, vocab_file=vocab_name, patterns_file=patterns_name)
+        params = {k: v for k, v in params.items() if v != "" and v != None}
+        print("PARAMS", params)
+        data = AnalyzerRequest(**params).__dict__
+        logger.debug("analyzer initialized")
+        json_fs_dao = JSONFSDAO(ANALYZER_PATH)
+        json_fs_dao.save(data, name)
+        logger.debug("analyzer saved")
+
+        return json("analyzer configuration saved as '%s'" % name)
+
+@app.post("/loko_delete_settings")
+@extract_value_args()
+async def settings(value, args):
+
+    aname = args.get("analyzer_name_delete")
+    pname = args.get("preproc_name_delete")
+
+    ret_anal = ""
+    ret_preproc = ""
+
+    if aname:
+        logger.debug("analyzer to delete: %s" % aname)
+        json_fs_dao = JSONFSDAO(ANALYZER_PATH)
+
+
+        if aname in list(json_fs_dao.all()):
+
+            logger.debug(ret_anal)
+            vocab_name = "vocab_" + aname + "_anal"
+
+            txt_fs_dao = TXTFSDAO(VOCABULARY_PATH)
+
+            if vocab_name in list(txt_fs_dao.all()):
+                txt_fs_dao.remove(vocab_name)
+                logger.debug(vocab_name)
+
+            patterns_name = "patterns_" + aname + "_anal"
+
+            txt_fs_dao = TXTFSDAO(PATTERNS_PATH)
+
+            if patterns_name in list(txt_fs_dao.all()):
+                txt_fs_dao.remove(patterns_name)
+                logger.debug(patterns_name)
+
+        else:
+            ret_anal = "analyzer configuration '{anal}' already deleted".format(anal=aname)
+
+    if pname:
+
+        json_fs_dao = JSONFSDAO(PREPROCESSING_PATH)
+        if pname in list(json_fs_dao.all()) :
+            json_fs_dao.remove(pname)
+        else:
+            ret_preproc = "preprocessing configuration '{preproc}' already deleted".format(
+                preproc=pname)
+
+    if not aname and not pname:
+        return json("No Configuration to delete specified... Select at least one analyzer/preprocessor")
+    ret = "None"
+    if ret_anal != "":
+        if ret_preproc != "":
+            ret = ret_anal + "; " + ret_preproc
+        else:
+            ret = ret_anal
+    else:
+        if ret_preproc != "":
+            ret = ret_preproc
+
     return json(ret)
+
+
 
 
 app.blueprint(bp)
