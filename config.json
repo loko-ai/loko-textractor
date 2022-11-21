@@ -1,4 +1,7 @@
 {
   "main": {
+    "volumes": [
+      "var/opt/loko/loko-textractor:/ds4biz-textractor/repo"
+    ]
   }
 }
