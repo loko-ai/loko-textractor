@@ -1,0 +1,7 @@
+{
+  "main": {
+    "volumes": [
+      "var/opt/loko/loko-textractor:/loko-textractor/repo"
+    ]
+  }
+}
