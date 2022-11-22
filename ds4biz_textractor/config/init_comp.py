@@ -68,23 +68,32 @@ group_delete_settings = "Delete Settings"
 force_ocr = Arg("force_ocr", label="Force OCR", type="boolean",
                 description="If True, even if the document is machine readable the OCR engine will be used",
                 group=group_ocr_extraction, value=False)
-analyzer = AsyncSelect("analyzer", label="Analyzer", url="http://localhost:9999/routes/loko-textractor/ds4biz/textract/0.1/analyzer",
-                       helper="File name of the chosen analyzer, if not set the default analyzer settings will be used",
+
+analyzer = AsyncSelect("analyzer", label="Analyzer",
+                       url="http://localhost:9999/routes/loko-textractor/ds4biz/textract/0.1/analyzer",
+                       helper="Select an analyzer, if not set the default analyzer settings will be used",
+                       description="An analyzer object is compose of different configurations to run the tesseract engine",
                        group=group_ocr_extraction)
+
 pre_processing = AsyncSelect("preprocessing", label="Preprocessing",
                              url="http://localhost:9999/routes/loko-textractor/ds4biz/textract/0.1/preprocessing",
-                             helper="File name of the chosen pre-processing, if not set no pre-processing will be done",
+                             helper="Select a preprocessing, if not set no pre-processing will be done",
+                             description="A preprocessing object is compose of different configurations to prepare the input image",
                              group=group_ocr_extraction)
+
 accept = Select(name="accept", label="Accept",
                 options=["application/json", "plain/text"],
                 group=group_ocr_extraction,
-                helper="If plain is selected the entire ocr-doc will be returned, otherwise the response will be a json which separates each page. Default='application/json'",
+                helper="Select an output format, default='application/json'",
+                description="format and content type of the output",
                 value="plain/text")
 ####
 
 settings_type = Select(name="settings_type", label="Settings Type",
                        options=["Analyzer", "Pre-Processing"],  # , "Post-Processing"],
                        group=group_custom_settings,
+                       description="You can choose between Analyzer or Preprocessing object in order to create a new custom configuration",
+                       helper="Select configuration type"
                        )
 
 new_analyzer_name = Dynamic(name="new_analyzer_name", label="Name",
@@ -92,7 +101,7 @@ new_analyzer_name = Dynamic(name="new_analyzer_name", label="Name",
                             parent="settings_type",
                             group="Custom Settings",
                             condition='{parent}==="Analyzer"',
-                            helper="Name of the analyzer custom settings")
+                            helper="Name of the new analyzer")
 
 oem_type = Dynamic(name="oem_type", label="OEM",
                    # options=[0, 1, 2, 3],
@@ -144,8 +153,8 @@ whitelist = Dynamic(name="whitelist", label="Character Whitelist ",
                     parent="settings_type",
                     group="Custom Settings",
                     condition='{parent}==="Analyzer"',
-                    helper="The only characters that the OCR engine is allowed to recognize",
-                    # helper="All the characters must be write without separator"
+                    helper="Inser characters",
+                    description="The only characters that the OCR engine is allowed to recognize. All the characters must be write without separator"
                     )
 
 blacklist = Dynamic(name="blacklist", label="Character Blacklist ",
@@ -153,21 +162,24 @@ blacklist = Dynamic(name="blacklist", label="Character Blacklist ",
                     parent="settings_type",
                     group="Custom Settings",
                     condition='{parent}==="Analyzer"',
-                    helper="Characters that must never be included in the results")
+                    helper="Inser characters",
+                    description="Characters that must never be included in the results. All the characters must be write without separator")
 
 vocab_file = Dynamic(name="vocab_file", label="Vocabulary File Name",  # cambiare in File
                      dynamicType="files",
                      parent="settings_type",
                      group="Custom Settings",
                      condition='{parent}==="Analyzer"',
-                     helper="")
+                     helper="Select the vocabulary file",
+                     description="vocabulary file list of tokens that helps the token recognition process")
 
 patterns_file = Dynamic(name="patterns_file", label="Patterns File Name",
                         dynamicType="files",
                         parent="settings_type",
                         group="Custom Settings",
                         condition='{parent}==="Analyzer"',
-                        helper="")
+                        helper="Select the patterns file",
+                        description="Patterns file that helps the token recognition process")
 
 new_preprocessing_name = Dynamic(name="new_preprocessing_name", label="Name",
                                  dynamicType="text",
@@ -175,6 +187,7 @@ new_preprocessing_name = Dynamic(name="new_preprocessing_name", label="Name",
                                  group="Custom Settings",
                                  condition='{parent}==="Pre-Processing"',
                                  helper="Name of the pre-processing custom settings")
+
 dpi = Dynamic(name="dpi", label="DPI",
               dynamicType="number",
               parent="settings_type",
@@ -183,6 +196,7 @@ dpi = Dynamic(name="dpi", label="DPI",
               helper="DPI value to use when processing files",
               value=100
               )
+
 zoom = Dynamic(name="zoom", label="Apply Zoom",
                dynamicType="boolean",
                parent="settings_type",
@@ -209,8 +223,8 @@ interpolation_mode = Dynamic(name="interpolation_mode", label="Interpolation Mod
                              parent="zoom",
                              group="Custom Settings",
                              condition='{parent}===true',
-                             description="Interpolation algorithm to use when doing the resize",
-                             helper="In case of Zoom-In the image will generally look best with INTER_CUBIC mode (slow) or INTER_LINEAR (faster but still looks good);"
+                             helper="Interpolation algorithm",
+                             description="In case of Zoom-In the image will generally look best with INTER_CUBIC mode (slow) or INTER_LINEAR (faster but still looks good);"
                                     " In case of Zoom-Out the mode INTER_AREA generally works better",
                              value="1: INTER_LINEAR")
 
@@ -229,16 +243,16 @@ preproc_name_delete = AsyncSelect(name="preproc_name_delete", label="Pre-Process
 
 ####
 
-args = [force_ocr, analyzer, accept, settings_type, new_analyzer_name, oem_type, psm_type, lang, whitelist, blacklist,
+args = [force_ocr, analyzer, pre_processing, accept, settings_type, new_analyzer_name, oem_type, psm_type, lang,
+        whitelist, blacklist,
         vocab_file, patterns_file, new_preprocessing_name, dpi, zoom, zoom_level, interpolation_mode,
         analyzer_name_delete, preproc_name_delete]
 
-inputs = [Input(id="ocr_extraction", service="loko_extract", to="ocr_extraction"), Input(id="settings", service="loko_settings", to="settings"), Input(id="delete_settings", service="loko_delete_settings", to="delete_settings")]
+inputs = [Input(id="ocr_extraction", service="loko_extract", to="ocr_extraction"),
+          Input(id="settings", service="loko_settings", to="settings"),
+          Input(id="delete_settings", service="loko_delete_settings", to="delete_settings")]
 outputs = [Output(id="ocr_extraction"), Output(id="settings"), Output(id="delete_settings")]
-c = Component(name="Textract", inputs=inputs,outputs=outputs, args=args, description=textractor_doc, icon="RiBubbleChartLine")
+c = Component(name="Textract", inputs=inputs, outputs=outputs, args=args, description=textractor_doc,
+              icon="RiBubbleChartLine")
 
 save_extensions([c])
-
-'''
-new_analyzer_name, oem_type, psm_type, lang, whitelist, blacklist, vocab_file, patterns_file, new_preprocessing_name, dpi, zoom, zoom_level, interpolation_mode, analyzer_name_delete, preproc_name_delete
-     '''
