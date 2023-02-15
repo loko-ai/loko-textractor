@@ -194,7 +194,7 @@ dpi = Dynamic(name="dpi", label="DPI",
               group="Custom Settings",
               condition='{parent}==="Pre-Processing"',
               helper="DPI value to use when processing files",
-              value=100
+              value="200"
               )
 
 zoom = Dynamic(name="zoom", label="Apply Zoom",

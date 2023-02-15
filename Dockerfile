@@ -14,7 +14,7 @@ RUN python -m nltk.downloader punkt
 # FROM python:3.7-slim
 # COPY --from=builder /root/.local /root/.local
 ADD . /ds4biz-textractor
-ENV PYTHONPATH=$PYTHONPATH:/ds4biz-textractor:/root/.local/lib/python3.7/site-packages
+ENV PYTHONPATH=$PYTHONPATH:/ds4biz-textractor:/root/.local/lib/python3.10/site-packages
 WORKDIR /ds4biz-textractor/ds4biz_textractor/services
 ENV OMP_THREAD_LIMIT=1
 ENV SANIC_REQUEST_TIMEOUT=300
