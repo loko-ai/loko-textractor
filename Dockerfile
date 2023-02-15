@@ -20,7 +20,6 @@ ENV OMP_THREAD_LIMIT=1
 ENV SANIC_REQUEST_TIMEOUT=300
 # ENV REQUEST_TIMEOUT=300
 ENV SANIC_ACCESS_LOG=False
-ENV WORKERS=1
 ENV PROCESS_WORKERS=1
 EXPOSE 8080
 ## request max size 500MB
@@ -30,5 +29,5 @@ ENV SANIC_REQUEST_TIMEOUT=3600
 ## response timeout 1h
 ENV SANIC_RESPONSE_TIMEOUT=3600
 EXPOSE 8080
-CMD python -m sanic ds4biz_textractor.services.textractor_services.app --host=0.0.0.0 --port=8080 --workers=$WORKERS
+CMD python -m sanic ds4biz_textractor.services.textractor_services.app --host=0.0.0.0 --port=8080 --single-process
 # CMD gunicorn ds4biz_textractor.services.textractor_services:app -b 0.0.0.0:8080 -w $WORKERS --timeout $REQUEST_TIMEOUT -k uvicorn.workers.UvicornWorker

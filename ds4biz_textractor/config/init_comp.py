@@ -209,7 +209,7 @@ zoom_level = Dynamic(name="zoom_level", label="Zoom Level",
                      group="Custom Settings",
                      condition='{parent}===true',
                      helper="If the zoom rate level is set to a lower value than 1.0 the image will be shrinked, otherwise the image will be enlarged",
-                     value=1.3)
+                     value="1.3")
 interpolation_mode = Dynamic(name="interpolation_mode", label="Interpolation Mode",
                              options=["0: INTER_NEAREST",
                                       "1: INTER_LINEAR",

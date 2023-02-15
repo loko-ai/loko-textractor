@@ -23,7 +23,7 @@ import asyncio
 
 from sanic import Blueprint, response
 from sanic import Sanic
-from sanic.response import json, raw
+from sanic.response import json, raw, ResponseStream
 from sanic_openapi import swagger_blueprint, doc
 
 from ds4biz_textractor.utils.json_utils import stream_json
@@ -81,7 +81,7 @@ def response_converter(data, ct):
 def stream_resp(obj):
     async def ret(response):
         async for el in stream_json(obj):
-            await response.send(el)
+            await response.write(el)
             await asyncio.sleep(0.001)
 
     return ret
@@ -116,11 +116,11 @@ async def convert(request):
 
     # ret = response_converter(StreamString((el['text'] async for el in res)), accept_ct)
     ret = response_converter([el async for el in res], accept_ct)
-    response = await request.respond()
+    # response = await request.respond()
     # end=time.time()
     # print("time: "+ str(end-start))
-    await stream_resp(ret)(response)
-    # return stream(stream_resp(ret), content_type=accept_ct)
+    # await stream_resp(ret)(response)
+    return ResponseStream(stream_resp(ret), content_type=accept_ct)
 
 
 @bp.post("/hocr")
@@ -685,4 +685,4 @@ async def settings(value, args):
 app.blueprint(bp)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=PORT, auto_reload=True)
+    app.run(host="0.0.0.0", port=PORT, single_process=True)
