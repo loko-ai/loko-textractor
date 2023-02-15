@@ -28,3 +28,5 @@ os.makedirs(VOCABULARY_PATH, exist_ok=True)
 logger.info("done creating config...")
 GATEWAY = os.environ.get("GATEWAY", 'http://localhost:9999')
 GATEWAY = f"{GATEWAY}/routes"
+
+DPI_DEFAULT = int(os.environ.get('DPI_DEFAULT', '200'))

@@ -47,7 +47,7 @@
     "oem_type": "1: neural nets LSTM engine only",
     "psm_type": "1: automatic page segmentation with OSD",
     "lang": "auto",
-    "dpi": 100,
+    "dpi": "200",
     "zoom_level": "1.3",
     "interpolation_mode": "1: INTER_LINEAR"
    },
@@ -286,7 +286,7 @@
      "label": "DPI",
      "helper": "DPI value to use when processing files",
      "group": "Custom Settings",
-     "value": 100,
+     "value": "200",
      "description": "",
      "validation": null,
      "parent": "settings_type",

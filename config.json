@@ -2,6 +2,9 @@
   "main": {
     "volumes": [
       "/var/opt/loko/loko-textractor:/ds4biz-textractor/repo"
-    ]
+    ],
+    "environment": {
+      "DPI_DEFAULT": 200
+      }
   }
 }

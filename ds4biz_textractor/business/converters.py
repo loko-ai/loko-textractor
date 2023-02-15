@@ -16,7 +16,7 @@ from docx import Document
 from ds4biz_format_parsers.business.converters import Email2TextEmail
 
 from ds4biz_textractor.business.ocr import TESSERACT
-from ds4biz_textractor.config.app_config import PROCESS_WORKERS
+from ds4biz_textractor.config.app_config import PROCESS_WORKERS, DPI_DEFAULT
 from ds4biz_textractor.dao.bb_dao import RDao
 from ds4biz_textractor.utils.eml_utils import te2text
 from ds4biz_textractor.utils.logger_utils import logger
@@ -36,7 +36,7 @@ class PDF2text:
         logger.debug("force OCR extraction: %s" % str(force_extraction))
         configs = kwargs.get('configs')
         tesseract = TESSERACT(**configs)
-        dpi = None
+        dpi = DPI_DEFAULT
         if "preprocessing_configs" in configs:
             dpi = configs.get("preprocessing_configs").get("dpi")
         loop = asyncio.get_event_loop()
