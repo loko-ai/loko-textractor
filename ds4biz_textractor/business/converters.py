@@ -235,7 +235,7 @@ class PDF2hocr:
                        output, **kwargs):
         logger.debug("pdf to HOCR")
 
-        if output == "pdf":
+        if output == "application/pdf":
             ret_pdf = PdfFileMerger()
         else:
             hocr_output = dict()
@@ -258,13 +258,13 @@ class PDF2hocr:
 
             img = manipulate_pdf_page(page, dpi)
             res = await loop.run_in_executor(POOL, functools.partial(tesseract), img)
-            if output == "pdf":
+            if output == "application/pdf":
                 ret_pdf.append(res)
             else:
                 hocr_output[str(i)] = res
         logger.debug("pdf hocr done...")
 
-        if output == "pdf":
+        if output == "application/pdf":
             buffer = io.BytesIO()
             ret_pdf.write(buffer)
             buffer.seek(0)
@@ -290,7 +290,7 @@ class IMG2hocr:
                 res = tesseract(Image.open(content))
             else:
                 res = tesseract(Image.open(io.BytesIO(content)))
-            if output == "json":
+            if output == "application/json":
                 return res  # dict(content=res, filename=file.name)
             return res
         except Exception as inst:

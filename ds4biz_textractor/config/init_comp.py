@@ -61,8 +61,16 @@ The output of the extraction service is a json composed of the key“ text ”an
 '''
 
 group_ocr_extraction = "OCR Extraction"
+group_hocr_extraction = "HOCR Extraction"
 group_custom_settings = "Custom Settings"
 group_delete_settings = "Delete Settings"
+
+accept_hocr = Select(name="accept_hocr", label="Accept",
+                     options=["application/json", "text/html"],
+                     helper="Select an output format, default='application/json'",
+                     description="format and content type of the output",
+                     value="application/json",
+                     group=group_hocr_extraction)
 
 ####
 force_ocr = Arg("force_ocr", label="Force OCR", type="boolean",
@@ -83,10 +91,10 @@ pre_processing = AsyncSelect("preprocessing", label="Preprocessing",
 
 accept = Select(name="accept", label="Accept",
                 options=["application/json", "plain/text"],
-                group=group_ocr_extraction,
-                helper="Select an output format, default='application/json'",
+                helper="Select an output format, default='plain/text'",
                 description="format and content type of the output",
-                value="plain/text")
+                value="plain/text",
+                group=group_ocr_extraction)
 ####
 
 settings_type = Select(name="settings_type", label="Settings Type",
@@ -225,7 +233,7 @@ interpolation_mode = Dynamic(name="interpolation_mode", label="Interpolation Mod
                              condition='{parent}===true',
                              helper="Interpolation algorithm",
                              description="In case of Zoom-In the image will generally look best with INTER_CUBIC mode (slow) or INTER_LINEAR (faster but still looks good);"
-                                    " In case of Zoom-Out the mode INTER_AREA generally works better",
+                                         " In case of Zoom-Out the mode INTER_AREA generally works better",
                              value="1: INTER_LINEAR")
 
 analyzer_name_delete = AsyncSelect(name="analyzer_name_delete", label="Analyzer Settings Name",
@@ -246,12 +254,14 @@ preproc_name_delete = AsyncSelect(name="preproc_name_delete", label="Pre-Process
 args = [force_ocr, analyzer, pre_processing, accept, settings_type, new_analyzer_name, oem_type, psm_type, lang,
         whitelist, blacklist,
         vocab_file, patterns_file, new_preprocessing_name, dpi, zoom, zoom_level, interpolation_mode,
-        analyzer_name_delete, preproc_name_delete]
+        analyzer_name_delete, preproc_name_delete, accept_hocr]
 
 inputs = [Input(id="ocr_extraction", service="loko_extract", to="ocr_extraction"),
+          Input(id="hocr_extraction", service="loko_hocr", to="hocr_extraction"),
           Input(id="settings", service="loko_settings", to="settings"),
           Input(id="delete_settings", service="loko_delete_settings", to="delete_settings")]
-outputs = [Output(id="ocr_extraction"), Output(id="settings"), Output(id="delete_settings")]
+outputs = [Output(id="ocr_extraction"), Output(id="hocr_extraction"), Output(id="settings"),
+           Output(id="delete_settings")]
 c = Component(name="Textract", inputs=inputs, outputs=outputs, args=args, description=textractor_doc,
               icon="RiBubbleChartLine")
 

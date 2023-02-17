@@ -518,6 +518,73 @@ async def loko_extract(file, args):
 
     return json(dict(path=file.name, content=ret))
 
+# @bp.post("/hocr")
+# @doc.description(
+#     'Content Negotiation:<br>application/json->bounding boxes(default)<br>application/pdf->searchable pdf<br>text/html->html tags')
+# @doc.tag('extract services')
+# @doc.consumes(doc.String(name="accept", choices=["application/pdf", "application/json", "text/html"]),
+#               location="header")
+# @doc.consumes(doc.String(name="postprocessing_configs"), location="query")
+# @doc.consumes(doc.String(name="analyzer_configs"), location="query")
+# @doc.consumes(doc.String(name="preprocessing_configs"), location="query")
+# @doc.consumes(doc.File(name="file"), location="formData", content_type="multipart/form-data", required=True)
+
+@app.post("/loko_hocr")
+@extract_value_args(file=True)
+async def hocr(file, args):
+
+    accept_ct = args.get("accept_hocr", "application/json")
+    analyzer = args.get("analyzer")
+    pre_processing = args.get("pre_processing")
+    force_ocr = args.get("force_ocr")
+
+    if analyzer:
+        json_fs_dao = JSONFSDAO(ANALYZER_PATH)
+        if analyzer not in list(json_fs_dao.all()):
+            logger.warning(
+                'Analyzer {anal} not anymore available. Extraction will be performed without considering '
+                'it.'.format(
+                    anal=analyzer))
+            analyzer = None
+
+    if pre_processing:
+
+        json_fs_dao = JSONFSDAO(PREPROCESSING_PATH)
+
+        if pre_processing not in list(json_fs_dao.all()):
+            logger.warning(
+                "Pre-processing {preproc} not anymore available. Extraction will be performed without considering it.".format(
+                    preproc=pre_processing))
+            pre_processing = None
+
+    params = dict(force_ocr=str(force_ocr).lower(), analyzer_configs=analyzer,
+                  preprocessing_configs=pre_processing,
+                  # postprocessing_configs=post_processing
+                  )
+
+    configs = get_configurations_files(params)
+    logger.debug("selected config: %s", configs)
+
+    if isinstance(file, list):
+        file = file[0]
+
+    logger.debug("HOCR on file %s" % file.name)
+
+    output = await hocr_extract_file(file=file, output=accept_ct, configs=configs)
+    # output = hocr(file.body, ct=magic.from_buffer(file.body, mime=True))
+    # print(output.getvalue())
+    # ret = response_converter([el async for el in output], accept)
+    logger.debug(output)
+
+    if accept_ct == "application/pdf":
+        original_ext = file.name.split('.')[-1].lower()
+        if original_ext != ".pdf":
+            headers = {'Content-Disposition': 'attachment; filename="{}.pdf"'.format(file.name)}
+        else:
+            headers = {'Content-Disposition': 'attachment; filename="{}"'.format(file.name)}
+        return raw(output.getvalue(), headers=headers)
+
+    return json(output)
 
 
 @app.post("/loko_settings")

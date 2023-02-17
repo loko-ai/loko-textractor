@@ -15,6 +15,12 @@
     "to": "ocr_extraction"
    },
    {
+    "id": "hocr_extraction",
+    "label": "hocr_extraction",
+    "service": "loko_hocr",
+    "to": "hocr_extraction"
+   },
+   {
     "id": "settings",
     "label": "settings",
     "service": "loko_settings",
@@ -33,6 +39,10 @@
     "label": "ocr_extraction"
    },
    {
+    "id": "hocr_extraction",
+    "label": "hocr_extraction"
+   },
+   {
     "id": "settings",
     "label": "settings"
    },
@@ -47,9 +57,10 @@
     "oem_type": "1: neural nets LSTM engine only",
     "psm_type": "1: automatic page segmentation with OSD",
     "lang": "auto",
-    "dpi": 100,
+    "dpi": "200",
     "zoom_level": "1.3",
-    "interpolation_mode": "1: INTER_LINEAR"
+    "interpolation_mode": "1: INTER_LINEAR",
+    "accept_hocr": "application/json"
    },
    "args": [
     {
@@ -88,7 +99,7 @@
      "name": "accept",
      "type": "select",
      "label": "Accept",
-     "helper": "Select an output format, default='application/json'",
+     "helper": "Select an output format, default='plain/text'",
      "group": "OCR Extraction",
      "value": "plain/text",
      "description": "format and content type of the output",
@@ -286,7 +297,7 @@
      "label": "DPI",
      "helper": "DPI value to use when processing files",
      "group": "Custom Settings",
-     "value": 100,
+     "value": "200",
      "description": "",
      "validation": null,
      "parent": "settings_type",
@@ -374,6 +385,20 @@
      "description": "",
      "validation": null,
      "url": "http://localhost:9999/routes/loko-textractor/ds4biz/textract/0.1/preprocessing"
+    },
+    {
+     "name": "accept_hocr",
+     "type": "select",
+     "label": "Accept",
+     "helper": "Select an output format, default='application/json'",
+     "group": "HOCR Extraction",
+     "value": "application/json",
+     "description": "format and content type of the output",
+     "validation": null,
+     "options": [
+      "application/json",
+      "text/html"
+     ]
     }
    ]
   }

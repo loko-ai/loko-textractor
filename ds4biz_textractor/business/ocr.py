@@ -148,17 +148,17 @@ class Analyzer:
                 return text
             else:
                 logger.debug("start analyzer works for an ocr...")
-                if self.output == "json":
+                if self.output == "application/json":
                     logger.debug("image to HOCR json format")
                     text_rif = pytesseract.image_to_data(img, config=self.config, lang=self.lang)
                     text = [x.split("\t") for x in text_rif.split("\n")]  # todo aggiungere configs
                     res = [el.__dict__ for el in RDao(text).all()]
                     return res
-                elif self.output == "pdf":
+                elif self.output == "application/pdf":
                     logger.debug("image to HOCR pdf format")
                     result = pytesseract.image_to_pdf_or_hocr(img, config=self.config, lang=self.lang)
                     return io.BytesIO(result)
-                elif self.output == "html":
+                elif self.output == "text/html":
                     logger.debug("image to HOCR html format")
                     return pytesseract.image_to_pdf_or_hocr(img, config=self.config, lang=self.lang, extension='hocr').decode()
 

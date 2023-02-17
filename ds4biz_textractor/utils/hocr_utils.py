@@ -21,7 +21,7 @@ from ds4biz_textractor.utils.logger_utils import logger
 #     else:
 #         raise Exception("Not supported format")
 
-def hocr_extract_file(file: sanic.request.File, output: {"html", "pdf", "json"} = "json", configs: dict = None):
+def hocr_extract_file(file: sanic.request.File, output: {"text/html", "application/pdf", "application/json"} = "application/json", configs: dict = None):
     res = None
     logger.debug("start HOCR process")
     for file in file_handler(file):
