@@ -597,16 +597,14 @@ async def settings(value, args):
 
     if settings_type == "Pre-Processing":
 
-        interpolation_mode = args.get("interpolation_mode")
-        dpi = args.get("dpi")
+        dpi = int(float(args.get("dpi")))
         name = args.get("new_preprocessing_name")
         zoom_level = args.get("zoom_level")
+        zoom_level = float(zoom_level) if zoom_level else None
+        interpolation_mode = args.get("interpolation_mode")
+        interpl_mode = int(interpolation_mode.split(":")[0]) if interpolation_mode else None
 
         logger.debug("creating pre-processing...")
-        dpi = int(float(dpi))
-        zoom_level = float(
-            zoom_level)  # float(zoom_level.replace(",", ".")) if "," in zoom_level else float(zoom_level) ##---->inutile, non si possono inserire , o stringhe o altri caratteri
-        interpl_mode = int(interpolation_mode.split(":")[0])
 
         params = dict(dpi=dpi,
                       zoom_level=zoom_level,
