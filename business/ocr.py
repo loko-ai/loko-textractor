@@ -9,9 +9,9 @@ import pytesseract
 from PIL import Image
 from langdetect import detect_langs
 
-from ds4biz_textractor.config.app_config import VOCABULARY_PATH, PATTERNS_PATH
-from ds4biz_textractor.dao.bb_dao import RDao
-from ds4biz_textractor.utils.logger_utils import logger
+from config.app_config import VOCABULARY_PATH, PATTERNS_PATH
+from dao.bb_dao import RDao
+from utils.logger_utils import logger
 
 LANG_MAPPING = dict(it='ita', en='eng')
 

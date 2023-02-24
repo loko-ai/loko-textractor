@@ -7,8 +7,8 @@ from zipfile import ZipFile
 import rarfile
 from sanic.request import File
 
-from ds4biz_textractor.utils.process_utils import save2temp
-from ds4biz_textractor.utils.resources_utils import get_resource
+from utils.process_utils import save2temp
+from utils.resources_utils import get_resource
 
 ENCODING = "latin"
 

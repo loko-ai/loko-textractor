@@ -1,7 +1,7 @@
-from ds4biz_textractor.config.app_config import PREPROCESSING_PATH, ANALYZER_PATH, POSTPROCESSING_PATH, VOCABULARY_PATH, \
+from config.app_config import PREPROCESSING_PATH, ANALYZER_PATH, POSTPROCESSING_PATH, VOCABULARY_PATH, \
     PATTERNS_PATH
-from ds4biz_textractor.dao.file_system_dao import JSONFSDAO, TXTFSDAO
-from ds4biz_textractor.utils.logger_utils import logger
+from dao.file_system_dao import JSONFSDAO, TXTFSDAO
+from utils.logger_utils import logger
 
 PATHS_MAPPING = dict(preprocessing=PREPROCESSING_PATH,
                      analyzer=ANALYZER_PATH,

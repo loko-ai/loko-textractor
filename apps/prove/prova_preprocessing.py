@@ -1,14 +1,8 @@
-import asyncio
-import sys
-
 import cv2
 import fitz
 import numpy as np
 import pytesseract
 from PIL import Image
-from sanic.request import File
-
-from ds4biz_textractor.utils.extract_utils import extract_file
 
 wfname = '../../test/test_resources/DOC090519-09052019083949.pdf'
 

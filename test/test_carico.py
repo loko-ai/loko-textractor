@@ -5,7 +5,7 @@ import os
 import aiohttp
 import asyncio
 
-from ds4biz_textractor.utils.resources_utils import get_resource
+from utils.resources_utils import get_resource
 
 BASE_URL = "http://localhost:8080/ds4biz/textract/0.1/extract"
 

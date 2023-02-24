@@ -1,6 +1,4 @@
-from typing import List
-
-from ds4biz_textractor.utils.logger_utils import logger
+from utils.logger_utils import logger
 
 
 class PreprocessingRequest:

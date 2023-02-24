@@ -1,6 +1,6 @@
 import os
 
-from ds4biz_textractor.config.app_config import SUPPORTED_EXT
+from config.app_config import SUPPORTED_EXT
 
 
 def norm_ext(fname):

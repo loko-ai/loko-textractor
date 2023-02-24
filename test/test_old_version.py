@@ -3,7 +3,7 @@ from datetime import datetime
 
 import requests
 
-from ds4biz_textractor.utils.resources_utils import get_resource
+from utils.resources_utils import get_resource
 
 BASE_URL_NEW = "http://localhost:8082/ds4biz/textract/0.1/extract"
 BASE_URL_OLD = "http://localhost:8080/ds4biz/textract/0.2/extract"

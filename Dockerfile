@@ -13,9 +13,10 @@ RUN python -m nltk.downloader punkt
 # RUN pip install gunicorn uvicorn && ln -s /usr/local/bin/gunicorn /usr/bin/gunicorn && ln -s /usr/local/bin/uvicorn /usr/bin/uvicorn
 # FROM python:3.7-slim
 # COPY --from=builder /root/.local /root/.local
-ADD . /ds4biz-textractor
-ENV PYTHONPATH=$PYTHONPATH:/ds4biz-textractor:/root/.local/lib/python3.10/site-packages
-WORKDIR /ds4biz-textractor/ds4biz_textractor/services
+RUN echo "AAAAAAAAAAAAAAAA"
+ADD . /loko-textractor
+ENV PYTHONPATH=$PYTHONPATH:/loko-textractor:/root/.local/lib/python3.10/site-packages
+WORKDIR /loko-textractor/services
 ENV OMP_THREAD_LIMIT=1
 ENV SANIC_REQUEST_TIMEOUT=300
 # ENV REQUEST_TIMEOUT=300
@@ -29,5 +30,5 @@ ENV SANIC_REQUEST_TIMEOUT=3600
 ## response timeout 1h
 ENV SANIC_RESPONSE_TIMEOUT=3600
 EXPOSE 8080
-CMD python -m sanic ds4biz_textractor.services.textractor_services.app --host=0.0.0.0 --port=8080 --single-process
+CMD python -m sanic textractor_services.app --host=0.0.0.0 --port=8080 --single-process
 # CMD gunicorn ds4biz_textractor.services.textractor_services:app -b 0.0.0.0:8080 -w $WORKERS --timeout $REQUEST_TIMEOUT -k uvicorn.workers.UvicornWorker

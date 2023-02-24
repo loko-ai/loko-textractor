@@ -3,7 +3,7 @@ import io
 import fitz
 from PIL import Image
 
-from ds4biz_textractor.utils.logger_utils import logger
+from utils.logger_utils import logger
 
 
 def manipulate_pdf_page(page: fitz.Page, dpi: int = None):

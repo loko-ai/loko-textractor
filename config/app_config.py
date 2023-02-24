@@ -1,7 +1,7 @@
 import os
 
-from ds4biz_textractor.utils.config_utils import EnvInit
-from ds4biz_textractor.utils.logger_utils import logger
+from utils.config_utils import EnvInit
+from utils.logger_utils import logger
 
 logger.info("starting creating config...")
 
@@ -13,7 +13,7 @@ SUPPORTED_EXT = ["jpg", "pdf", "csv", "doc", "docx", "eml", "epub", "gif", "htm"
 e = EnvInit()
 
 PORT = e.get("PORT", 8080)
-REPO_PATH = "../../repo"
+REPO_PATH = "../repo"
 PREPROCESSING_PATH = os.path.join(REPO_PATH, "preprocessing")
 ANALYZER_PATH = os.path.join(REPO_PATH, "analyzer")
 POSTPROCESSING_PATH = os.path.join(REPO_PATH, "postprocessing")

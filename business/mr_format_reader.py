@@ -1,8 +1,8 @@
 import pandas as pd
 import textract
 
-from ds4biz_textractor.config.app_config import SUPPORTED_EXT
-from ds4biz_textractor.utils.resources_utils import get_resource
+from config.app_config import SUPPORTED_EXT
+from utils.resources_utils import get_resource
 
 LANGUAGE = "it" #langdetect
 ENCODING = "utf8" #chardet

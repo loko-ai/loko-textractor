@@ -6,17 +6,16 @@ from loko_client.business.fs_client import AsyncFSClient
 from loko_extensions.business.decorators import extract_value_args
 
 # from ds4biz_textractor.business.converters import HOCR
-from ds4biz_textractor.config.app_config import PREPROCESSING_PATH, ANALYZER_PATH, POSTPROCESSING_PATH, \
+from config.app_config import PREPROCESSING_PATH, ANALYZER_PATH, POSTPROCESSING_PATH, \
     PORT, GATEWAY, VOCABULARY_PATH, PATTERNS_PATH
-from ds4biz_textractor.dao.file_system_dao import JSONFSDAO, TXTFSDAO
-from ds4biz_textractor.model.data_models import EvaluateResponse, PreprocessingRequest, AnalyzerRequest, \
+from dao.file_system_dao import JSONFSDAO, TXTFSDAO
+from model.data_models import EvaluateResponse, PreprocessingRequest, AnalyzerRequest, \
     PostprocessingRequest
-from ds4biz_textractor.utils.configurations_utils import get_configurations_files, get_type_path, \
-    save_users_file_from_txt
-from ds4biz_textractor.utils.extract_utils import extract_file
-from ds4biz_textractor.utils.hocr_utils import hocr_extract_file
-from ds4biz_textractor.utils.logger_utils import logger
-from ds4biz_textractor.utils.ocr_evaluation_utils import documents_performance
+from utils.configurations_utils import get_configurations_files, get_type_path
+from utils.extract_utils import extract_file
+from utils.hocr_utils import hocr_extract_file
+from utils.logger_utils import logger
+from utils.ocr_evaluation_utils import documents_performance
 
 warnings.filterwarnings("ignore")
 import asyncio
@@ -26,8 +25,8 @@ from sanic import Sanic
 from sanic.response import json, raw, ResponseStream
 from sanic_openapi import swagger_blueprint, doc
 
-from ds4biz_textractor.utils.json_utils import stream_json
-from ds4biz_textractor.utils.pom_utils import get_pom_major_minor
+from utils.json_utils import stream_json
+from utils.pom_utils import get_pom_major_minor
 
 logger.debug("start initializing...")
 

@@ -1,4 +1,4 @@
-from ds4biz_textractor.model.data_models import BB
+from model.data_models import BB
 
 
 class RDao:

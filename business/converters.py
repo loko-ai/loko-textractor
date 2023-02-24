@@ -4,10 +4,8 @@ import io
 import logging
 import os
 import re
-import time
 
 import fitz
-import pytesseract
 import sanic
 from PIL import Image
 from PyPDF2 import PdfFileMerger
@@ -15,12 +13,11 @@ from bs4 import BeautifulSoup as bs
 from docx import Document
 from ds4biz_format_parsers.business.converters import Email2TextEmail
 
-from ds4biz_textractor.business.ocr import TESSERACT
-from ds4biz_textractor.config.app_config import PROCESS_WORKERS, DPI_DEFAULT
-from ds4biz_textractor.dao.bb_dao import RDao
-from ds4biz_textractor.utils.eml_utils import te2text
-from ds4biz_textractor.utils.logger_utils import logger
-from ds4biz_textractor.utils.pdf_utils import manipulate_pdf_page
+from business.ocr import TESSERACT
+from config.app_config import PROCESS_WORKERS, DPI_DEFAULT
+from utils.eml_utils import te2text
+from utils.logger_utils import logger
+from utils.pdf_utils import manipulate_pdf_page
 
 os.environ['OMP_THREAD_LIMIT'] = '1'
 from concurrent.futures import ProcessPoolExecutor

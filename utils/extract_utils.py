@@ -2,9 +2,9 @@
 import sanic
 from aiostream.stream import merge
 
-from ds4biz_textractor.business.converters import CONV_FACTORY
-from ds4biz_textractor.business.handlers import file_handler
-from ds4biz_textractor.utils.format_utils import get_format
+from business.converters import CONV_FACTORY
+from business.handlers import file_handler
+from utils.format_utils import get_format
 
 
 def extract_file(file: sanic.request.File, force_extraction: bool = False, configs: dict = None):

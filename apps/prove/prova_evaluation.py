@@ -2,8 +2,8 @@ import asyncio
 
 from sanic.request import File
 
-from ds4biz_textractor.utils.extract_utils import extract_file
-from ds4biz_textractor.utils.ocr_evaluation_utils import documents_performance
+from utils.extract_utils import extract_file
+from utils.ocr_evaluation_utils import documents_performance
 
 path = '/home/robertaparisi/Documenti/report.xlsx'
 

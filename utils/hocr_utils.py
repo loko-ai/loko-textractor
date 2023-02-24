@@ -1,13 +1,10 @@
-import asyncio
-
 import sanic
 from aiostream.stream import merge
-from sanic.request import File
 
-from ds4biz_textractor.business.converters import CONV_FACTORY, hocr_f
-from ds4biz_textractor.business.handlers import file_handler
-from ds4biz_textractor.utils.format_utils import get_format
-from ds4biz_textractor.utils.logger_utils import logger
+from business.converters import CONV_FACTORY, hocr_f
+from business.handlers import file_handler
+from utils.format_utils import get_format
+from utils.logger_utils import logger
 
 
 #

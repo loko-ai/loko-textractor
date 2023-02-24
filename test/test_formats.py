@@ -7,7 +7,7 @@ from typing import List
 import aiohttp
 import requests
 
-from ds4biz_textractor.utils.resources_utils import get_resource
+from utils.resources_utils import get_resource
 
 ASYNC = True
 
