@@ -468,7 +468,7 @@ async def loko_extract(file, args):
 
     accept_ct = args.get("accept", "application/json")
     analyzer = args.get("analyzer")
-    pre_processing = args.get("pre_processing")
+    pre_processing = args.get("preprocessing")
     force_ocr = args.get("force_ocr")
 
 
@@ -534,7 +534,7 @@ async def hocr(file, args):
 
     accept_ct = args.get("accept_hocr", "application/json")
     analyzer = args.get("analyzer")
-    pre_processing = args.get("pre_processing")
+    pre_processing = args.get("preprocessing")
     force_ocr = args.get("force_ocr")
 
     if analyzer:

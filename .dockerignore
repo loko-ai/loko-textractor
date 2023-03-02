@@ -1,2 +1,9 @@
+.*
 venv
-/ds4biz_textractor/test/
+!.gitignore
+!.dockerignore
+*.pyc
+dist
+__pycache__
+/repo
+/test/test_resources

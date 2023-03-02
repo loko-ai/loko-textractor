@@ -5,6 +5,5 @@ venv
 *.pyc
 dist
 __pycache__
-dist
-/ds4biz_textractor/repo/
-**/test_resources
+/repo
+/test/test_resources
