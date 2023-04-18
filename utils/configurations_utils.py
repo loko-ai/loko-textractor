@@ -1,7 +1,7 @@
 from config.app_config import PREPROCESSING_PATH, ANALYZER_PATH, POSTPROCESSING_PATH, VOCABULARY_PATH, \
     PATTERNS_PATH
 from dao.file_system_dao import JSONFSDAO, TXTFSDAO
-from utils.logger_utils import logger
+from loguru import logger
 
 PATHS_MAPPING = dict(preprocessing=PREPROCESSING_PATH,
                      analyzer=ANALYZER_PATH,

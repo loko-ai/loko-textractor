@@ -8,15 +8,15 @@ import re
 import fitz
 import sanic
 from PIL import Image
-from PyPDF2 import PdfFileMerger
+from PyPDF2 import PdfMerger
 from bs4 import BeautifulSoup as bs
 from docx import Document
 from ds4biz_format_parsers.business.converters import Email2TextEmail
 
 from business.ocr import TESSERACT
 from config.app_config import PROCESS_WORKERS, DPI_DEFAULT
+from loguru import logger
 from utils.eml_utils import te2text
-from utils.logger_utils import logger
 from utils.pdf_utils import manipulate_pdf_page
 
 os.environ['OMP_THREAD_LIMIT'] = '1'
@@ -29,7 +29,6 @@ POOL = ProcessPoolExecutor(max_workers=PROCESS_WORKERS)
 class PDF2text:
     async def __call__(self, file: sanic.request.File,
                        force_extraction: bool = False, **kwargs):
-        print(file.name)
         logger.debug("force OCR extraction: %s" % str(force_extraction))
         configs = kwargs.get('configs')
         tesseract = TESSERACT(**configs)
@@ -54,7 +53,7 @@ class PDF2text:
                     # text = tesseract(img)
                     yield dict(page=i, text=text, filename=file.name)
                 else:
-                    logger.debug(msg="machine readable file... getting text...")
+                    logger.debug("machine readable file... getting text...")
                     yield dict(page=i, text=text, filename=file.name)
             except Exception as inst:
                 logging.exception(inst)
@@ -233,7 +232,7 @@ class PDF2hocr:
         logger.debug("pdf to HOCR")
 
         if output == "application/pdf":
-            ret_pdf = PdfFileMerger()
+            ret_pdf = PdfMerger()
         else:
             hocr_output = dict()
 
@@ -303,7 +302,6 @@ class ConverterFactory:
         self.mapping[ext] = value
 
     def get(self, ext):
-        print("==========", ext)
         c = dict(jpg="img", jpeg="img", png="img", tif="img", tiff="img")
         if ext.startswith(hocr_f):
             temp_ext = ext.replace(hocr_f, "")
@@ -313,7 +311,6 @@ class ConverterFactory:
             ext = c[ext]
         if ext in self.mapping:
             return self.mapping[ext]
-        print(ext)
         raise Exception('Extension not handled: {ext}'.format(ext=ext))
     #
     # try:

@@ -4,7 +4,11 @@
       "/var/opt/loko/loko-textractor:/plugin/repo"
     ],
     "environment": {
-      "DPI_DEFAULT": 200
+      "DPI_DEFAULT": 200,
+      "PROCESS_WORKERS": 1,
+      "SANIC_REQUEST_MAX_SIZE": 500000000,
+      "SANIC_REQUEST_TIMEOUT": 3600,
+      "SANIC_RESPONSE_TIMEOUT": 3600
     }
   }
 }

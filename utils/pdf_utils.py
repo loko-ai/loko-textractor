@@ -2,14 +2,13 @@ import io
 
 import fitz
 from PIL import Image
-
-from utils.logger_utils import logger
+from loguru import logger
 
 
 def manipulate_pdf_page(page: fitz.Page, dpi: int = None):
     img = page.get_pixmap(dpi=dpi)
     # img.save("img0_"+i+".jpg")
-    data = img.tobytes("format")
+    data = img.tobytes("jpg")
     img = Image.open(io.BytesIO(data))
     logger.debug("actual dpi value: %s" % str(img.info['dpi']))
     # img.save("img1_" + str(i) + ".jpg")

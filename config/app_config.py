@@ -1,7 +1,7 @@
 import os
 
+from loguru import logger
 from utils.config_utils import EnvInit
-from utils.logger_utils import logger
 
 logger.info("starting creating config...")
 

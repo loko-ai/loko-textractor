@@ -1,31 +1,31 @@
-import warnings
 from ast import literal_eval
 from io import BytesIO
 
+from loguru import logger
 from loko_client.business.fs_client import AsyncFSClient
 from loko_extensions.business.decorators import extract_value_args
 
-# from ds4biz_textractor.business.converters import HOCR
 from config.app_config import PREPROCESSING_PATH, ANALYZER_PATH, POSTPROCESSING_PATH, \
     PORT, GATEWAY, VOCABULARY_PATH, PATTERNS_PATH
 from dao.file_system_dao import JSONFSDAO, TXTFSDAO
 from model.data_models import EvaluateResponse, PreprocessingRequest, AnalyzerRequest, \
     PostprocessingRequest
+from sanic.exceptions import NotFound
+from sanic_ext import Config
+from sanic_ext.extensions.openapi import openapi
+from sanic_ext.extensions.openapi.definitions import Parameter, Header
+from sanic_ext.extensions.openapi.types import Schema, String, Definition
 from utils.configurations_utils import get_configurations_files, get_type_path
 from utils.extract_utils import extract_file
 from utils.hocr_utils import hocr_extract_file
-from utils.logger_utils import logger
 from utils.ocr_evaluation_utils import documents_performance
-
-warnings.filterwarnings("ignore")
 import asyncio
 
 from sanic import Blueprint, response
 from sanic import Sanic
-from sanic.response import json, raw, ResponseStream
-from sanic_openapi import swagger_blueprint, doc
+from sanic.response import json, raw, ResponseStream, text
 
-from utils.json_utils import stream_json
+from utils.json_utils import stream_json, StreamString
 from utils.pom_utils import get_pom_major_minor
 
 logger.debug("start initializing...")
@@ -34,42 +34,45 @@ loko_cli = AsyncFSClient(GATEWAY)
 
 name = "ds4biz-textract"
 app = Sanic(name)
-swagger_blueprint.url_prefix = "/api"
+app.extend(config=Config(oas_url_prefix='/api', oas_ui_default='swagger',
+                         swagger_ui_configuration=dict(DocExpansion=None)))
 
 bp = Blueprint("default", url_prefix=f"ds4biz/textract/{get_pom_major_minor()}")
 app.config["API_VERSION"] = get_pom_major_minor()
 app.config["API_TITLE"] = name
-app.blueprint(swagger_blueprint)
 
-from sanic.response import text
+def file(name='file'):
+    def tmp(f):
+        content = {"multipart/form-data": {"schema": {"type": "object", "properties": {name: {"type": "string", "format": "binary"}}}}}
+        return openapi.body(content, required=True)(f)
+    return tmp
 
+@app.exception(Exception)
+async def generic_exception(request, exception):
+    try:
+        e = str(exception)
+        j = dict(error=e)
 
+        status_code = getattr(exception, "status_code", None) or 500
+        if isinstance(exception, NotFound):
+            logger.error(NotFound)
+            return json(j, status=404, headers={"Access-Control-Allow-Origin": "*"})
+        logger.exception(e)
 
+        return json(j, status=status_code, headers={"Access-Control-Allow-Origin": "*"})
+    except Exception as inst:
+        logger.exception(inst)
 
-
-# @app.exception(Exception)
-# async def generic_exception(request, exception):
-#     logging.debug(j)
-#     if isinstance(exception, NotFound):
-#         return response.json(j, status=404)
-#     return response.json(j)
 
 
 def text_resp(data):
-    # return data
-    logger.debug(data)
-    return ''.join([el['text'] for el in data])
-
-
-def json_resp(data):
-    # return dict(text=data)
-    return data
+    return StreamString((el['text'] async for el in data))
 
 
 CONVERTER = dict()
-CONVERTER['application/json'] = json_resp
+CONVERTER['application/json'] = lambda x: x
 CONVERTER['plain/text'] = text_resp
-CONVERTER['*/*'] = json_resp
+CONVERTER['*/*'] = lambda x: x
 
 
 def response_converter(data, ct):
@@ -89,19 +92,18 @@ def stream_resp(obj):
 ### EXTRACT
 
 @bp.post("/extract")
-@doc.summary('')
-@doc.tag('extract services')
-@doc.consumes(doc.String(name="accept", choices=["application/json", "plain/text"],
-                         description="If plain is selected the entire ocr-doc will be returned, otherwise the response will be a json which separates each page. Default='application/json'"),
-              location="header")
-@doc.consumes(doc.String(name="postprocessing_configs"), location="query")
-@doc.consumes(doc.String(name="analyzer_configs"), location="query")
-@doc.consumes(doc.String(name="preprocessing_configs"), location="query")
-@doc.consumes(doc.Boolean(name="force_ocr_extraction", description="Available only for .pdf files. Default=False"),
-              location="query")
-@doc.consumes(doc.File(name="file"), location="formData", content_type="multipart/form-data", required=True)
+@openapi.summary(' ')
+@openapi.tag('extract services')
+@openapi.response(content={"application/json": {}, "plain/text": {}},
+                  description="If plain is selected the entire ocr-doc will be returned, otherwise the response will be a json which separates each page. Default='application/json'")
+@openapi.parameter(name="postprocessing_configs", location="query")
+@openapi.parameter(name="analyzer_configs", location="query")
+@openapi.parameter(name="preprocessing_configs", location="query")
+@openapi.parameter(name="force_ocr_extraction", description="Available only for .pdf files. Default=False",
+                   location="query", schema=bool)
+@file()
 async def convert(request):
-    # start = time.time()
+
     configs = get_configurations_files(request.args)
     logger.debug("selected config: %s", configs)
 
@@ -110,56 +112,54 @@ async def convert(request):
     if accept_ct == "*/*":
         accept_ct = 'application/json'
 
-    force_extraction = eval(request.args.get("force_ocr_extraction", "false").capitalize())
-    res = extract_file(file, force_extraction, configs=configs)
+    logger.debug(f'Filename: {file.name}')
 
-    # ret = response_converter(StreamString((el['text'] async for el in res)), accept_ct)
-    ret = response_converter([el async for el in res], accept_ct)
-    # response = await request.respond()
-    # end=time.time()
-    # print("time: "+ str(end-start))
-    # await stream_resp(ret)(response)
-    return ResponseStream(stream_resp(ret), content_type=accept_ct)
+    force_extraction = eval(request.args.get("force_ocr_extraction", "false").capitalize())
+    logger.debug(force_extraction)
+    res = extract_file(file, force_extraction, configs=configs)
+    ret = response_converter(res, accept_ct)
+
+    return ResponseStream(stream_resp(ret), headers={'content-type': accept_ct})
 
 
 @bp.post("/hocr")
-@doc.description(
+@openapi.summary(' ')
+@openapi.description(
     'Content Negotiation:<br>application/json->bounding boxes(default)<br>application/pdf->searchable pdf<br>text/html->html tags')
-@doc.tag('extract services')
-@doc.consumes(doc.String(name="accept", choices=["application/pdf", "application/json", "text/html"]),
-              location="header")
-@doc.consumes(doc.String(name="postprocessing_configs"), location="query")
-@doc.consumes(doc.String(name="analyzer_configs"), location="query")
-@doc.consumes(doc.String(name="preprocessing_configs"), location="query")
-@doc.consumes(doc.File(name="file"), location="formData", content_type="multipart/form-data", required=True)
+@openapi.tag('extract services')
+@openapi.response(content={"application/pdf": {}, "application/json": {}, "text/html": {}})
+@openapi.parameter(name="postprocessing_configs", location="query")
+@openapi.parameter(name="analyzer_configs", location="query")
+@openapi.parameter(name="preprocessing_configs", location="query")
+@file()
 async def hocr(request):
     configs = get_configurations_files(request.args)
     logger.debug("configs: %s", configs)
-    accept = request.headers.get("accept", 'application/pdf').split("/")[-1]
+    accept = request.headers.get("accept", 'application/pdf')
     file = request.files.get('file')
     logger.debug("HOCR on file %s" % file.name)
     output = await hocr_extract_file(file=file, output=accept, configs=configs)
     # output = hocr(file.body, ct=magic.from_buffer(file.body, mime=True))
     # print(output.getvalue())
     # ret = response_converter([el async for el in output], accept)
-    print(output)
-    if accept == "pdf":
+    if accept == "application/pdf":
         original_ext = file.name.split('.')[-1].lower()
         if original_ext != ".pdf":
             headers = {'Content-Disposition': 'attachment; filename="{}.pdf"'.format(file.name)}
         else:
             headers = {'Content-Disposition': 'attachment; filename="{}"'.format(file.name)}
         return raw(output.getvalue(), headers=headers)
-    print(json(output))
+
     return json(output)
 
 
 ### EVALUATE
 @bp.post("/evaluate")
-@doc.tag('extract services')
-@doc.consumes(doc.File(name="file"), location="formData", content_type="multipart/form-data")
-@doc.consumes(doc.File(name="annotation"), location="formData", content_type="multipart/form-data")
-@doc.consumes(doc.Boolean(name="report"), location="query")
+@openapi.tag('extract services')
+@openapi.summary(' ')
+@file(name='file')
+@file(name='annotation')
+@openapi.parameter(name="report", schema=bool, location="query")
 async def evaluate(request):
     file = request.files.get('file')
     ann = request.files.get('annotation')
@@ -188,13 +188,13 @@ preprocessing_params = '''
 
 
 @bp.post("/preprocessing/<name>")
-@doc.tag('preprocessing configs')
-@doc.summary("Save an object in 'preprocessing'")
-@doc.description(preprocessing_params)
-@doc.consumes(doc.Float(name="zoom_level"), location="query")
-@doc.consumes(doc.String(name="interpolation_mode"), location="query")
-@doc.consumes(doc.Integer(name="dpi"), location="query")
-@doc.consumes(doc.String(name="name"), location="path")
+@openapi.tag('preprocessing configs')
+@openapi.summary("Save an object in 'preprocessing'")
+@openapi.description(preprocessing_params)
+@openapi.parameter(name="zoom_level", schema=float, location="query")
+@openapi.parameter(name="interpolation_mode", location="query")
+@openapi.parameter(name="dpi", schema=int, location="query")
+@openapi.parameter(name="name", location="path")
 # self.resize_dim = resize_dim
 async def save_preprocessing(request, name):
     logger.debug("saving pre-processing %s" % (name))
@@ -208,9 +208,9 @@ async def save_preprocessing(request, name):
 
 
 @bp.get("/preprocessing/<name>")
-@doc.tag('preprocessing configs')
-@doc.summary("Display object info from 'preprocessing'")
-@doc.consumes(doc.String(name="name"), location="path")
+@openapi.tag('preprocessing configs')
+@openapi.summary("Display object info from 'preprocessing'")
+@openapi.parameter(name="name", location="path")
 async def preprocessing_info(request, name):
     logger.debug("asking preprocessing %s info" % name)
     json_fs_dao = JSONFSDAO(PREPROCESSING_PATH)
@@ -219,9 +219,9 @@ async def preprocessing_info(request, name):
 
 
 @bp.delete("/preprocessing/<name>")
-@doc.tag('preprocessing configs')
-@doc.summary("Delete an object from 'preprocessing'")
-@doc.consumes(doc.String(name="name"), location="path")
+@openapi.tag('preprocessing configs')
+@openapi.summary("Delete an object from 'preprocessing'")
+@openapi.parameter(name="name", location="path")
 async def delete_preprocessing(request, name):
     logger.debug("delete preprocessing %s" % (name))
     json_fs_dao = JSONFSDAO(PREPROCESSING_PATH)
@@ -230,8 +230,8 @@ async def delete_preprocessing(request, name):
 
 
 @bp.get("/preprocessing")
-@doc.tag('preprocessing configs')
-@doc.summary("List objects in 'preprocessing'")
+@openapi.tag('preprocessing configs')
+@openapi.summary("List objects in 'preprocessing'")
 async def list_preprocessings(request):
     logger.debug("listing preprocessing object..")
     json_fs_dao = JSONFSDAO(PREPROCESSING_PATH)
@@ -276,17 +276,17 @@ analyzer_params = '''
 
 
 @bp.post("/analyzer/<name>")
-@doc.tag('analyzer configs')
-@doc.summary("Save an object in 'analyzer'")
-@doc.description(analyzer_params)
-@doc.consumes(doc.String(name="blacklist"), location="query")
-@doc.consumes(doc.String(name="whitelist"), location="query")
-@doc.consumes(doc.String(name="lang"), location="query")
-@doc.consumes(doc.Integer(name="psm"), location="query", required=True)
-@doc.consumes(doc.Integer(name="oem"), location="query", required=True)
-@doc.consumes(doc.String(name="patterns_file"), location="query")
-@doc.consumes(doc.String(name="vocab_file"), location="query")
-@doc.consumes(doc.String(name="name"), location="path")
+@openapi.tag('analyzer configs')
+@openapi.summary("Save an object in 'analyzer'")
+@openapi.description(analyzer_params)
+@openapi.parameter(name="blacklist", location="query")
+@openapi.parameter(name="whitelist", location="query")
+@openapi.parameter(name="lang", location="query")
+@openapi.parameter(name="psm", schema=int, location="query", required=True)
+@openapi.parameter(name="oem", schema=int, location="query", required=True)
+@openapi.parameter(name="patterns_file", location="query")
+@openapi.parameter(name="vocab_file", location="query")
+@openapi.parameter(name="name", location="path")
 async def save_analyzer(request, name):
     logger.debug("saving analyzer %s" % name)
     # args = request.args
@@ -320,9 +320,9 @@ async def save_analyzer(request, name):
 #     return text("%s type file saved as '%s'" % (type, name))
 
 @bp.get("/analyzer/<name>")
-@doc.tag('analyzer configs')
-@doc.summary("Display object info from 'analyzer'")
-@doc.consumes(doc.String(name="name"), location="path")
+@openapi.tag('analyzer configs')
+@openapi.summary("Display object info from 'analyzer'")
+@openapi.parameter(name="name", location="path")
 async def analyzer_info(request, name):
     logger.debug("asking analyzer %s info" % (name))
     json_fs_dao = JSONFSDAO(ANALYZER_PATH)
@@ -331,9 +331,9 @@ async def analyzer_info(request, name):
 
 
 @bp.delete("/analyzer/<name>")
-@doc.tag('analyzer configs')
-@doc.summary("Delete an object from 'analyzer'")
-@doc.consumes(doc.String(name="name"), location="path")
+@openapi.tag('analyzer configs')
+@openapi.summary("Delete an object from 'analyzer'")
+@openapi.parameter(name="name", location="path")
 async def delete_analyzer(request, name):
     logger.debug("deleting analyzer %s" % (name))
     json_fs_dao = JSONFSDAO(ANALYZER_PATH)
@@ -342,8 +342,8 @@ async def delete_analyzer(request, name):
 
 
 @bp.get("/analyzer")
-@doc.tag('analyzer configs')
-@doc.summary("List objects in 'analyzer'")
+@openapi.tag('analyzer configs')
+@openapi.summary("List objects in 'analyzer'")
 async def list_analyzers(request):
     logger.debug("listing analyzer object...")
     json_fs_dao = JSONFSDAO(ANALYZER_PATH)
@@ -352,10 +352,9 @@ async def list_analyzers(request):
 
 ### POSTPROCESSING
 @bp.post("/postprocessing/<name>")
-@doc.tag('postprocessing configs')
-@doc.summary("Save an object in 'postprocessing'")
-@doc.consumes(doc.String(name="name"), location="path")
-@doc.consumes(doc.String(name="name"), location="path")
+@openapi.tag('postprocessing configs')
+@openapi.summary("Save an object in 'postprocessing'")
+@openapi.parameter(name="name", location="path")
 async def save_postprocessing(request, name):
     logger.debug("saving post-processing %s" % name)
     data = PostprocessingRequest(**request.args).__dict__
@@ -367,9 +366,9 @@ async def save_postprocessing(request, name):
 
 
 @bp.get("/postprocessing/<name>")
-@doc.tag('postprocessing configs')
-@doc.summary("Display object info from 'postprocessing'")
-@doc.consumes(doc.String(name="name"), location="path")
+@openapi.tag('postprocessing configs')
+@openapi.summary("Display object info from 'postprocessing'")
+@openapi.parameter(name="name", location="path")
 async def postprocessing_info(request, name):
     logger.debug("asking post-processing %s info" % (name))
     json_fs_dao = JSONFSDAO(POSTPROCESSING_PATH)
@@ -378,9 +377,9 @@ async def postprocessing_info(request, name):
 
 
 @bp.delete("/postprocessing/<name>")
-@doc.tag('postprocessing configs')
-@doc.summary("Delete an object from 'postprocessing'")
-@doc.consumes(doc.String(name="name"), location="path")
+@openapi.tag('postprocessing configs')
+@openapi.summary("Delete an object from 'postprocessing'")
+@openapi.parameter(name="name", location="path")
 async def delete_postprocessing(request, name):
     logger.debug("deleting post-processing %s" % (name))
     json_fs_dao = JSONFSDAO(POSTPROCESSING_PATH)
@@ -389,8 +388,8 @@ async def delete_postprocessing(request, name):
 
 
 @bp.get("/postprocessing")
-@doc.tag('postprocessing configs')
-@doc.summary("List objects in 'postprocessing'")
+@openapi.tag('postprocessing configs')
+@openapi.summary("List objects in 'postprocessing'")
 async def list_postprocessings(request):
     logger.debug("listing post-processing object...")
     json_fs_dao = JSONFSDAO(POSTPROCESSING_PATH)
@@ -403,12 +402,13 @@ files_params = '''
 
 
 @bp.post("/files/<type>/<name>")
-@doc.tag('vocabulary and patterns')
-@doc.summary("Save an object in 'vocabulary' or 'patterns'")
-@doc.description(files_params)
-@doc.consumes(doc.List(name="data"), required=True)
-@doc.consumes(doc.String(name="name"), location="path")
-@doc.consumes(doc.String(name="type", choices=["vocabulary", "patterns"]), location="path")
+@openapi.tag('vocabulary and patterns')
+@openapi.summary("Save an object in 'vocabulary' or 'patterns'")
+@openapi.description(files_params)
+@openapi.parameter(name="data", required=True)
+@openapi.parameter(name="name", location="path")
+@openapi.parameter(parameter=Parameter(name="type", schema=String(enum=["vocabulary", "patterns"]),
+                                       location="path"))
 async def save_file(request, type, name):
     logger.debug("saving file %s (type %s)" % (name, type))
     path = get_type_path(type)
@@ -421,11 +421,12 @@ async def save_file(request, type, name):
 
 
 @bp.get("/files/<type>/<name>")
-@doc.tag('vocabulary and patterns')
-@doc.description(files_params)
-@doc.summary("Display object info from 'vocabulary' or 'patterns'")
-@doc.consumes(doc.String(name="name"), location="path")
-@doc.consumes(doc.String(name="type", choices=["vocabulary", "patterns"]), location="path")
+@openapi.tag('vocabulary and patterns')
+@openapi.description(files_params)
+@openapi.summary("Display object info from 'vocabulary' or 'patterns'")
+@openapi.parameter(name="name", location="path")
+@openapi.parameter(parameter=Parameter(name="type", schema=String(enum=["vocabulary", "patterns"]),
+                                       location="path"))
 async def file_info(request, type, name):
     logger.debug("asking info on %s (%s file)" % (name, type))
     path = get_type_path(type)
@@ -437,11 +438,12 @@ async def file_info(request, type, name):
 
 
 @bp.delete("/files/<type>/<name>")
-@doc.tag('vocabulary and patterns')
-@doc.description(files_params)
-@doc.summary("Delete an object from 'vocabulary' or 'patterns'")
-@doc.consumes(doc.String(name="name"), location="path")
-@doc.consumes(doc.String(name="type", choices=["vocabulary", "patterns"]), location="path")
+@openapi.tag('vocabulary and patterns')
+@openapi.description(files_params)
+@openapi.summary("Delete an object from 'vocabulary' or 'patterns'")
+@openapi.parameter(name="name", location="path")
+@openapi.parameter(parameter=Parameter(name="type", schema=String(enum=["vocabulary", "patterns"]),
+                                       location="path"))
 async def delete_file(request, type, name):
     logger.debug("deleting file %s (%s)" % (name, type))
     path = get_type_path(type)
@@ -451,10 +453,11 @@ async def delete_file(request, type, name):
 
 
 @bp.get("/files/<type>")
-@doc.tag('vocabulary and patterns')
-@doc.summary("List objects in 'vocabulary' or 'patterns'")
-@doc.description("<b>type:</b> vocabulary or patterns")
-@doc.consumes(doc.String(name="type", choices=["vocabulary", "patterns"]), location="path")
+@openapi.tag('vocabulary and patterns')
+@openapi.summary("List objects in 'vocabulary' or 'patterns'")
+@openapi.description("<b>type:</b> vocabulary or patterns")
+@openapi.parameter(parameter=Parameter(name="type", schema=String(enum=["vocabulary", "patterns"]),
+                                       location="path"))
 async def list_files(request, type):
     logger.debug("listing %s file..." % type)
     path = get_type_path(type)
@@ -463,6 +466,8 @@ async def list_files(request, type):
 
 
 @app.post("/loko_extract")
+@openapi.tag('loko')
+@openapi.summary(' ')
 @extract_value_args(file=True)
 async def loko_extract(file, args):
 
@@ -471,6 +476,7 @@ async def loko_extract(file, args):
     pre_processing = args.get("preprocessing")
     force_ocr = args.get("force_ocr")
 
+    logger.debug(f'Filename: {file[0].name}')
 
     if analyzer:
         json_fs_dao = JSONFSDAO(ANALYZER_PATH)
@@ -497,25 +503,17 @@ async def loko_extract(file, args):
                   )
 
     configs = get_configurations_files(params)
-    logger.debug("selected config: %s", configs)
+    logger.debug(f"selected config: {configs}")
     if isinstance(file, list):
         file = file[0]
-
+    logger.info(f'Filename: {file.name}')
 
     force_extraction = eval(params.get("force_ocr_extraction", "false").capitalize())
     res = extract_file(file, force_extraction, configs=configs)
 
-    # ret = response_converter(StreamString((el['text'] async for el in res)), accept_ct)
-    data = []
-    async for el in res:
-        data.append(el)
-
-    ret = response_converter(data, accept_ct)
-    # response = await request.respond()
-    # end=time.time()
-    # print("time: "+ str(end-start))
-
-    return json(dict(path=file.name, content=ret))
+    ret = response_converter(res, accept_ct)
+    return ResponseStream(stream_resp(ret), headers={'content-type': accept_ct})
+    # return json(dict(path=file.name, content=ret))
 
 # @bp.post("/hocr")
 # @doc.description(
@@ -529,6 +527,8 @@ async def loko_extract(file, args):
 # @doc.consumes(doc.File(name="file"), location="formData", content_type="multipart/form-data", required=True)
 
 @app.post("/loko_hocr")
+@openapi.tag('loko')
+@openapi.summary(' ')
 @extract_value_args(file=True)
 async def hocr(file, args):
 
@@ -573,7 +573,6 @@ async def hocr(file, args):
     # output = hocr(file.body, ct=magic.from_buffer(file.body, mime=True))
     # print(output.getvalue())
     # ret = response_converter([el async for el in output], accept)
-    logger.debug(output)
 
     if accept_ct == "application/pdf":
         original_ext = file.name.split('.')[-1].lower()
@@ -587,8 +586,10 @@ async def hocr(file, args):
 
 
 @app.post("/loko_settings")
+@openapi.tag('loko')
+@openapi.summary(' ')
 @extract_value_args()
-async def settings(value, args):
+async def settings2(value, args):
 
     settings_type = args.get("settings_type")
 
@@ -681,6 +682,8 @@ async def settings(value, args):
         return json("analyzer configuration saved as '%s'" % name)
 
 @app.post("/loko_delete_settings")
+@openapi.tag('loko')
+@openapi.summary(' ')
 @extract_value_args()
 async def settings(value, args):
 
@@ -742,8 +745,6 @@ async def settings(value, args):
             ret = ret_preproc
 
     return json(ret)
-
-
 
 
 app.blueprint(bp)

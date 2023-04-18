@@ -5,6 +5,7 @@ import tempfile
 from zipfile import ZipFile
 
 import rarfile
+from loguru import logger
 from sanic.request import File
 
 from utils.process_utils import save2temp
@@ -56,12 +57,15 @@ class CFHRar(CompressedFileHandler):
         rf = rarfile.RarFile(file.name)
         try:
             for fn in rf.infolist():
+                logger.debug(f'Filename: {fn.filename}')
                 ext = os.path.splitext(fn.filename)[-1].lower()
                 new_tmp = tempfile.NamedTemporaryFile(suffix=ext)
+                content = rf.read(fn)
                 with open(new_tmp.name, 'wb') as f:
-                    f.write(rf.read(fn))
+                    f.write(content)
                 yield {'filename': fn.filename, 'file': new_tmp}
         except Exception as inst:
+            logger.exception(inst)
             raise Exception("Error: extraction RAR \n" + str(inst))
         finally:
             file.close()
@@ -95,14 +99,12 @@ def file_handler(file):
     ofname = file.name
     file = save2temp(file)
     ext = file.name.split('.')[-1].lower()
-    print(ext)
     try:
         cfh = HANDLER_FACTORY.get(ext)
         for file_tmp in cfh(file):
             fname = file_tmp.get('filename', file_tmp['file'].name)
             fname = fname if ext in ['zip', 'rar'] else ofname
             file = open(file_tmp['file'].name, 'rb').read()
-            print(fname)
             yield File(name=fname, body=file, type='')
     except Exception as inst:
         raise inst

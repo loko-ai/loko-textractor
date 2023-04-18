@@ -11,7 +11,7 @@ from langdetect import detect_langs
 
 from config.app_config import VOCABULARY_PATH, PATTERNS_PATH
 from dao.bb_dao import RDao
-from utils.logger_utils import logger
+from loguru import logger
 
 LANG_MAPPING = dict(it='ita', en='eng')
 

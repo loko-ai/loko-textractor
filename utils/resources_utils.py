@@ -1,8 +1,7 @@
 import json
 
 import pkg_resources
-
-from utils.logger_utils import logger
+from loguru import logger
 
 
 def get_resource(fname: str = "", package: str = "resources"):
