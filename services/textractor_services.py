@@ -1,3 +1,4 @@
+import json
 from ast import literal_eval
 from io import BytesIO
 
@@ -10,22 +11,21 @@ from config.app_config import PREPROCESSING_PATH, ANALYZER_PATH, POSTPROCESSING_
 from dao.file_system_dao import JSONFSDAO, TXTFSDAO
 from model.data_models import EvaluateResponse, PreprocessingRequest, AnalyzerRequest, \
     PostprocessingRequest
+import sanic
 from sanic.exceptions import NotFound
 from sanic_ext import Config
 from sanic_ext.extensions.openapi import openapi
-from sanic_ext.extensions.openapi.definitions import Parameter, Header
-from sanic_ext.extensions.openapi.types import Schema, String, Definition
+from sanic_ext.extensions.openapi.definitions import Parameter
+from sanic_ext.extensions.openapi.types import String
 from utils.configurations_utils import get_configurations_files, get_type_path
 from utils.extract_utils import extract_file
 from utils.hocr_utils import hocr_extract_file
 from utils.ocr_evaluation_utils import documents_performance
-import asyncio
 
 from sanic import Blueprint, response
 from sanic import Sanic
-from sanic.response import json, raw, ResponseStream, text
 
-from utils.json_utils import stream_json, StreamString
+from utils.json_utils import stream_json
 from utils.pom_utils import get_pom_major_minor
 
 logger.debug("start initializing...")
@@ -56,35 +56,20 @@ async def generic_exception(request, exception):
         status_code = getattr(exception, "status_code", None) or 500
         if isinstance(exception, NotFound):
             logger.error(NotFound)
-            return json(j, status=404, headers={"Access-Control-Allow-Origin": "*"})
+            return sanic.response.json(j, status=404, headers={"Access-Control-Allow-Origin": "*"})
         logger.exception(e)
 
-        return json(j, status=status_code, headers={"Access-Control-Allow-Origin": "*"})
+        return sanic.response.json(j, status=status_code, headers={"Access-Control-Allow-Origin": "*"})
     except Exception as inst:
         logger.exception(inst)
 
 
 
-def text_resp(data):
-    return StreamString((el['text'] async for el in data))
-
-
-CONVERTER = dict()
-CONVERTER['application/json'] = lambda x: x
-CONVERTER['plain/text'] = text_resp
-CONVERTER['*/*'] = lambda x: x
-
-
-def response_converter(data, ct):
-    data = CONVERTER[ct](data)
-    return data
-
 
 def stream_resp(obj):
     async def ret(response):
-        async for el in stream_json(obj):
+        async for el in obj:
             await response.write(el)
-            await asyncio.sleep(0.001)
 
     return ret
 
@@ -117,9 +102,18 @@ async def convert(request):
     force_extraction = eval(request.args.get("force_ocr_extraction", "false").capitalize())
     logger.debug(force_extraction)
     res = extract_file(file, force_extraction, configs=configs)
-    ret = response_converter(res, accept_ct)
-
-    return ResponseStream(stream_resp(ret), headers={'content-type': accept_ct})
+    if accept_ct=='plain/text':
+        async def gen():
+            async for page in res:
+                yield page['text']
+        return sanic.response.ResponseStream(stream_resp(gen()), headers={'content-type': 'plain/text; charset=utf-8'})
+    if accept_ct == 'application/jsonl':
+        async def gen():
+            async for page in res:
+                yield json.dumps(page)+'\n'
+        return sanic.response.ResponseStream(stream_resp(gen()), headers={'content-type': 'application/jsonl'})
+    ### if accept is not one of the above return content-type: application/json ###
+    return sanic.response.ResponseStream(stream_resp(stream_json(res)), headers={'content-type': 'application/json'})
 
 
 @bp.post("/hocr")
@@ -148,9 +142,9 @@ async def hocr(request):
             headers = {'Content-Disposition': 'attachment; filename="{}.pdf"'.format(file.name)}
         else:
             headers = {'Content-Disposition': 'attachment; filename="{}"'.format(file.name)}
-        return raw(output.getvalue(), headers=headers)
+        return sanic.response.raw(output.getvalue(), headers=headers)
 
-    return json(output)
+    return sanic.response.json(output)
 
 
 ### EVALUATE
@@ -178,7 +172,7 @@ async def evaluate(request):
 
     res = dict(text=EvaluateResponse(**res['text']).__dict__,
                tokens=EvaluateResponse(**res['tokens']).__dict__)
-    return json(res)
+    return sanic.response.json(res)
 
 
 ### PREPROCESSING
@@ -204,7 +198,7 @@ async def save_preprocessing(request, name):
     json_fs_dao = JSONFSDAO(PREPROCESSING_PATH)
     json_fs_dao.save(data, name)
     logger.debug("pre-processing saved")
-    return text("preprocessing configuration saved as '%s'" % name)
+    return sanic.response.text("preprocessing configuration saved as '%s'" % name)
 
 
 @bp.get("/preprocessing/<name>")
@@ -215,7 +209,7 @@ async def preprocessing_info(request, name):
     logger.debug("asking preprocessing %s info" % name)
     json_fs_dao = JSONFSDAO(PREPROCESSING_PATH)
     content = json_fs_dao.get_by_id(name)
-    return json(content)
+    return sanic.response.json(content)
 
 
 @bp.delete("/preprocessing/<name>")
@@ -226,7 +220,7 @@ async def delete_preprocessing(request, name):
     logger.debug("delete preprocessing %s" % (name))
     json_fs_dao = JSONFSDAO(PREPROCESSING_PATH)
     json_fs_dao.remove(name)
-    return text("preprocessing configuration '%s' deleted" % name)
+    return sanic.response.text("preprocessing configuration '%s' deleted" % name)
 
 
 @bp.get("/preprocessing")
@@ -235,7 +229,7 @@ async def delete_preprocessing(request, name):
 async def list_preprocessings(request):
     logger.debug("listing preprocessing object..")
     json_fs_dao = JSONFSDAO(PREPROCESSING_PATH)
-    return json(json_fs_dao.all())
+    return sanic.response.json(json_fs_dao.all())
 
 
 ### ANALYZER
@@ -310,7 +304,7 @@ async def save_analyzer(request, name):
     json_fs_dao = JSONFSDAO(ANALYZER_PATH)
     json_fs_dao.save(data, name)
     logger.debug("analyzer saved")
-    return text("analyzer configuration saved as '%s'" % name)
+    return sanic.response.text("analyzer configuration saved as '%s'" % name)
 
 
 #     # data = request.args['data']
@@ -327,7 +321,7 @@ async def analyzer_info(request, name):
     logger.debug("asking analyzer %s info" % (name))
     json_fs_dao = JSONFSDAO(ANALYZER_PATH)
     content = json_fs_dao.get_by_id(name)
-    return json(content)
+    return sanic.response.json(content)
 
 
 @bp.delete("/analyzer/<name>")
@@ -338,7 +332,7 @@ async def delete_analyzer(request, name):
     logger.debug("deleting analyzer %s" % (name))
     json_fs_dao = JSONFSDAO(ANALYZER_PATH)
     json_fs_dao.remove(name)
-    return text("analyzer configuration '%s' deleted" % name)
+    return sanic.response.text("analyzer configuration '%s' deleted" % name)
 
 
 @bp.get("/analyzer")
@@ -347,7 +341,7 @@ async def delete_analyzer(request, name):
 async def list_analyzers(request):
     logger.debug("listing analyzer object...")
     json_fs_dao = JSONFSDAO(ANALYZER_PATH)
-    return json(json_fs_dao.all())
+    return sanic.response.json(json_fs_dao.all())
 
 
 ### POSTPROCESSING
@@ -362,7 +356,7 @@ async def save_postprocessing(request, name):
     json_fs_dao = JSONFSDAO(POSTPROCESSING_PATH)
     json_fs_dao.save(data, name)
     logger.debug("post-processing saved")
-    return text("postprocessing configuration saved as '%s'" % name)
+    return sanic.response.text("postprocessing configuration saved as '%s'" % name)
 
 
 @bp.get("/postprocessing/<name>")
@@ -373,7 +367,7 @@ async def postprocessing_info(request, name):
     logger.debug("asking post-processing %s info" % (name))
     json_fs_dao = JSONFSDAO(POSTPROCESSING_PATH)
     content = json_fs_dao.get_by_id(name)
-    return json(content)
+    return sanic.response.json(content)
 
 
 @bp.delete("/postprocessing/<name>")
@@ -384,7 +378,7 @@ async def delete_postprocessing(request, name):
     logger.debug("deleting post-processing %s" % (name))
     json_fs_dao = JSONFSDAO(POSTPROCESSING_PATH)
     json_fs_dao.remove(name)
-    return text("postprocessing configuration '%s' deleted" % name)
+    return sanic.response.text("postprocessing configuration '%s' deleted" % name)
 
 
 @bp.get("/postprocessing")
@@ -393,7 +387,7 @@ async def delete_postprocessing(request, name):
 async def list_postprocessings(request):
     logger.debug("listing post-processing object...")
     json_fs_dao = JSONFSDAO(POSTPROCESSING_PATH)
-    return json(json_fs_dao.all())
+    return sanic.response.json(json_fs_dao.all())
 
 
 files_params = '''
@@ -417,7 +411,7 @@ async def save_file(request, type, name):
     data = '\n'.join(data[0].split(','))
     txt_fs_dao.save(data, name)
     logger.debug("file saved")
-    return text("%s type file saved as '%s'" % (type, name))
+    return sanic.response.text("%s type file saved as '%s'" % (type, name))
 
 
 @bp.get("/files/<type>/<name>")
@@ -434,7 +428,7 @@ async def file_info(request, type, name):
     content = txt_fs_dao.get_by_id(name)
     content = content.split('\n')
     logger.debug("content: %s" % content)
-    return json(content)
+    return sanic.response.json(content)
 
 
 @bp.delete("/files/<type>/<name>")
@@ -449,7 +443,7 @@ async def delete_file(request, type, name):
     path = get_type_path(type)
     txt_fs_dao = TXTFSDAO(path)
     txt_fs_dao.remove(name)
-    return text("%s '%s' deleted" % (type, name))
+    return sanic.response.text("%s '%s' deleted" % (type, name))
 
 
 @bp.get("/files/<type>")
@@ -462,7 +456,7 @@ async def list_files(request, type):
     logger.debug("listing %s file..." % type)
     path = get_type_path(type)
     txt_fs_dao = TXTFSDAO(path)
-    return json(txt_fs_dao.all())
+    return sanic.response.json(txt_fs_dao.all())
 
 
 @app.post("/loko_extract")
@@ -511,9 +505,22 @@ async def loko_extract(file, args):
     force_extraction = eval(params.get("force_ocr_extraction", "false").capitalize())
     res = extract_file(file, force_extraction, configs=configs)
 
-    ret = response_converter(res, accept_ct)
-    return ResponseStream(stream_resp(ret), headers={'content-type': accept_ct})
-    # return json(dict(path=file.name, content=ret))
+    if accept_ct == 'plain/text':
+        async def gen():
+            async for page in res:
+                yield page['text']
+
+        return sanic.response.ResponseStream(stream_resp(gen()), headers={'content-type': 'plain/text; charset=utf-8'})
+
+    if accept_ct == 'application/jsonl':
+        async def gen():
+            async for page in res:
+                yield json.dumps(page) + '\n'
+
+        return sanic.response.ResponseStream(stream_resp(gen()), headers={'content-type': 'application/jsonl'})
+
+    ### if accept is not one of the above return content-type: application/json ###
+    return sanic.response.ResponseStream(stream_resp(stream_json(res)), headers={'content-type': 'application/json'})
 
 # @bp.post("/hocr")
 # @doc.description(
@@ -580,9 +587,9 @@ async def hocr(file, args):
             headers = {'Content-Disposition': 'attachment; filename="{}.pdf"'.format(file.name)}
         else:
             headers = {'Content-Disposition': 'attachment; filename="{}"'.format(file.name)}
-        return raw(output.getvalue(), headers=headers)
+        return sanic.response.raw(output.getvalue(), headers=headers)
 
-    return json(output)
+    return sanic.response.json(output)
 
 
 @app.post("/loko_settings")
@@ -618,7 +625,7 @@ async def settings2(value, args):
         json_fs_dao.save(data, name)
         logger.debug("pre-processing saved")
 
-        return json("pre-processing configuration saved as '%s'" % name)
+        return sanic.response.json("pre-processing configuration saved as '%s'" % name)
 
 
     elif settings_type == "Analyzer":
@@ -679,7 +686,7 @@ async def settings2(value, args):
         json_fs_dao.save(data, name)
         logger.debug("analyzer saved")
 
-        return json("analyzer configuration saved as '%s'" % name)
+        return sanic.response.json("analyzer configuration saved as '%s'" % name)
 
 @app.post("/loko_delete_settings")
 @openapi.tag('loko')
@@ -733,7 +740,7 @@ async def settings(value, args):
                 pname)
 
     if not aname and not pname:
-        return json("No Configuration to delete specified... Select at least one analyzer/preprocessor")
+        return sanic.response.json("No Configuration to delete specified... Select at least one analyzer/preprocessor")
     ret = "None"
     if ret_anal != "":
         if ret_preproc != "":
@@ -744,7 +751,7 @@ async def settings(value, args):
         if ret_preproc != "":
             ret = ret_preproc
 
-    return json(ret)
+    return sanic.response.json(ret)
 
 
 app.blueprint(bp)

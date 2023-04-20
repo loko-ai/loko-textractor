@@ -90,10 +90,10 @@ pre_processing = AsyncSelect("preprocessing", label="Preprocessing",
                              group=group_ocr_extraction)
 
 accept = Select(name="accept", label="Accept",
-                options=["application/json", "plain/text"],
+                options=["application/json", "plain/text", "application/jsonl"],
                 helper="Select an output format, default='plain/text'",
                 description="format and content type of the output",
-                value="plain/text",
+                value="application/json",
                 group=group_ocr_extraction)
 ####
 

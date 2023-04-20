@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 import aiohttp
 import requests
@@ -13,37 +14,49 @@ async def extract(url, files):
                 print(i)
                 print(data)
                 print(_)
-                if i==10:
+                if i == 10:
                     break
-                i+=1
+                i += 1
 
-fpath = '/home/cecilia/PycharmProjects/cartesio-lotto2-ee/cartesio-lotto2-ee/cartesio_lotto2_ee/test/resources/AllegatoTest1.pdf'
-# fpath = "/home/roberta/Downloads/ilovepdf_merged (1).pdf"
+fpath = '/home/cecilia/loko/projects/text_extraction_from_docs/data/cassazione.pdf'
+# fpath = "/home/cecilia/Scaricati/ilovepdf_merged (1).pdf"
 url = 'http://0.0.0.0:8080/ds4biz/textract/0.1/extract'
-file = dict(file=open(fpath, 'rb'))
 ct = 'plain/text'
 # ct = 'application/json'
+# ct = 'application/jsonl'
 
-### no stream ###
-# resp = requests.post(url, files=file, headers=dict(accept=ct))
-# if ct == 'application/json':
-#     r = resp.json()
-# else:
-#     r = resp.text
-# print(len(r))
-# print(r)
+with open(fpath, 'rb') as f:
+    file = dict(file=f)
 
-### aiohttp stream ###
-# loop = asyncio.get_event_loop()
-# loop.run_until_complete(asyncio.gather(extract(url, file)))
+    ### no stream ###
 
-### requests stream ###
-batchsize = 500*(2**10)
-r = requests.post(url, files=file, headers=dict(accept=ct), stream=True)
+    # resp = requests.post(url, files=file, headers=dict(accept=ct))
+    # if ct == 'application/json':
+    #     r = resp.json()
+    # else:
+    #     r = resp.text
+    # print(len(r))
+    # print(r)
 
-pages = 0
-for chunk in r.iter_content(batchsize):
-    print(chunk)
-    pages+=1
-    if pages>10:
-        break
+    ### aiohttp stream ###
+
+    # loop = asyncio.get_event_loop()
+    # loop.run_until_complete(asyncio.gather(extract(url, file)))
+
+    ### requests stream ###
+
+    batchsize = 500*(2**10)
+
+    r = requests.post(url, files=file, headers=dict(accept=ct), stream=True)
+
+    pages = 0
+    for chunk in r.iter_content(batchsize):
+        print('NEW CHUNK ###')
+        chunk = chunk.decode('utf-8')
+        if ct == 'application/jsonl':
+            print(json.loads(chunk))
+        else:
+            print(chunk)
+        pages += 1
+        if pages > 15:
+            break

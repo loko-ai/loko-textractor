@@ -53,7 +53,7 @@
   ],
   "options": {
    "values": {
-    "accept": "plain/text",
+    "accept": "application/json",
     "oem_type": "1: neural nets LSTM engine only",
     "psm_type": "1: automatic page segmentation with OSD",
     "lang": "auto",
@@ -101,12 +101,13 @@
      "label": "Accept",
      "helper": "Select an output format, default='plain/text'",
      "group": "OCR Extraction",
-     "value": "plain/text",
+     "value": "application/json",
      "description": "format and content type of the output",
      "validation": null,
      "options": [
       "application/json",
-      "plain/text"
+      "plain/text",
+      "application/jsonl"
      ]
     },
     {
