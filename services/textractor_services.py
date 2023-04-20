@@ -103,10 +103,11 @@ async def convert(request):
     logger.debug(force_extraction)
     res = extract_file(file, force_extraction, configs=configs)
     if accept_ct=='plain/text':
-        async def gen():
-            async for page in res:
-                yield page['text']
-        return sanic.response.ResponseStream(stream_resp(gen()), headers={'content-type': 'plain/text; charset=utf-8'})
+        response = await request.respond(content_type='plain/text; charset=utf-8')
+        async for page in res:
+            await response.send(page['text'])
+        await response.eof()
+        return
     if accept_ct == 'application/jsonl':
         async def gen():
             async for page in res:
