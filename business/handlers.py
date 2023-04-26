@@ -1,4 +1,5 @@
 import codecs
+import email
 import os
 import subprocess
 import tempfile
@@ -8,6 +9,8 @@ import rarfile
 from loguru import logger
 from sanic.request import File
 
+from business.email_parser import Email2TextEmail2
+from utils.eml_utils import te2text
 from utils.process_utils import save2temp
 from utils.resources_utils import get_resource
 
@@ -23,28 +26,27 @@ class CompressedFileHandler():
 class CFHP7m(CompressedFileHandler):
 
     def __call__(self, file):
+        file = save2temp(file)
+
         new_tmp = tempfile.NamedTemporaryFile(suffix=".pdf")
-        try:
-            subprocess.run(['openssl', 'smime', '-inform', 'DER', '-verify', '-noverify', '-in', file.name, '-out',
-                            new_tmp.name], stdout=subprocess.PIPE)
-            yield {'file': new_tmp}
-        except Exception as inst:
-            raise Exception("Error: extraction P7M \n" + str(inst))
+
+        subprocess.run(['openssl', 'smime', '-inform', 'DER', '-verify', '-noverify', '-in', file.name, '-out',
+                        new_tmp.name], stdout=subprocess.PIPE)
+        yield File(type='', body=open(new_tmp.name, 'rb').read(), name=file.name)
+
 
 
 class CFHZip(CompressedFileHandler):
 
     def __call__(self, file):
+        file = save2temp(file)
         zf = ZipFile(file.name)
         try:
             for fn in zf.infolist():
-                ext = os.path.splitext(fn.filename)[-1].lower()
                 if not fn.is_dir():
                     ext = os.path.splitext(fn.filename)[-1].lower()
                     new_tmp = tempfile.NamedTemporaryFile(suffix=ext)
-                    with codecs.open(new_tmp.name, encoding=ENCODING, mode="wb") as fb:
-                        fb.write(zf.read(fn).decode(ENCODING))
-                    yield {'filename': fn.filename, 'file': new_tmp}
+                    yield File(type='', body=zf.read(fn), name=fn.filename)
         except Exception as inst:
             raise Exception("Error: extraction ZIP \n" + str(inst))
         finally:
@@ -71,9 +73,25 @@ class CFHRar(CompressedFileHandler):
             file.close()
 
 
+class CFHEml(CompressedFileHandler):
+
+    def __init__(self):
+        self.e2t = Email2TextEmail2(None)
+
+    def __call__(self, file):
+
+        content = open(file.name, 'rb').read()
+        te = self.e2t(email.message_from_bytes(content))
+        text = te2text(te)
+        # yield dict(text=text, filename=file.name)
+        for k,v in te.attachments.items():
+            logger.debug(f'ATTACHMENT : {k}')
+            yield File(type='', body=v, name=k)
+
+
 class GenericFileHandler:
     def __call__(self, file):
-        yield dict(file=file)
+        yield file
 
 
 class HandlerFactory:
@@ -93,19 +111,16 @@ HANDLER_FACTORY.register('p7m', CFHP7m)
 HANDLER_FACTORY.register('p7s', CFHP7m)
 HANDLER_FACTORY.register('zip', CFHZip)
 HANDLER_FACTORY.register('rar', CFHRar)
+HANDLER_FACTORY.register('eml', CFHEml)
 
 
 def file_handler(file):
-    ofname = file.name
-    file = save2temp(file)
     ext = file.name.split('.')[-1].lower()
     try:
         cfh = HANDLER_FACTORY.get(ext)
         for file_tmp in cfh(file):
-            fname = file_tmp.get('filename', file_tmp['file'].name)
-            fname = fname if ext in ['zip', 'rar'] else ofname
-            file = open(file_tmp['file'].name, 'rb').read()
-            yield File(name=fname, body=file, type='')
+            yield file_tmp
+
     except Exception as inst:
         raise inst
         # raise Exception('Extension not handled: {ext}'.format(ext=ext))

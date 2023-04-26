@@ -13,7 +13,7 @@ def extract_file(file: sanic.request.File, force_extraction: bool = False, confi
     for file in file_handler(file):
         ext = get_format(file.name)
         converter = CONV_FACTORY.get(ext)()
-        logger.debug(f'Converter: {converter}')
+        logger.debug(f'Converter: {converter.__class__.__name__}')
         if ext == "pdf":
             res_tmp = converter(file, force_extraction, configs=configs)
         else:

@@ -18,12 +18,13 @@ async def extract(url, files):
                     break
                 i += 1
 
+fpath = '/home/cecilia/loko/data/textractor/FW_ AI POC_ materiali parte 4.eml'
 fpath = '/home/cecilia/loko/projects/text_extraction_from_docs/data/cassazione.pdf'
 # fpath = "/home/cecilia/Scaricati/ilovepdf_merged (1).pdf"
-url = 'http://0.0.0.0:8080/ds4biz/textract/0.1/extract'
-ct = 'plain/text'
+url = 'http://0.0.0.0:8082/ds4biz/textract/0.1/extract'
+# ct = 'plain/text'
 # ct = 'application/json'
-# ct = 'application/jsonl'
+ct = 'application/jsonl'
 
 with open(fpath, 'rb') as f:
     file = dict(file=f)
