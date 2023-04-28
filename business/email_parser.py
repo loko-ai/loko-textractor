@@ -9,22 +9,25 @@ from typing import List, Tuple, Dict
 
 import html2text
 
+
 from ds4biz_format_parsers.business.text_extractors import RESTDS4BizTextract
 from ds4biz_format_parsers.model.emails import TextEmail
 
 
-class Email2TextEmail:
+class AsyncEmail2TextEmail:
 
-    def __init__(self, extractor: RESTDS4BizTextract = None, part_types: List[str] = ["text/plain", "text/html"]):
+    def __init__(self, extractor: RESTDS4BizTextract, part_types: List[str] = ["text/plain", "text/html"],
+                 attachment_flag: bool = True):
         self.extractor = extractor
+        self.attachment_flag = attachment_flag
         self.part_types = part_types
 
-    def __call__(self, email: Message) -> TextEmail:
+    async def __call__(self, email: Message) -> TextEmail:
         te = TextEmail("")
         te.sender = self.get_sender(email)
         te.recipients, te.cc, te.bcc = self.get_recipients(email)
         te.subject = self.get_subject(email)
-        te.body_parts, te.attachments = self.get_parts(email)
+        te.body_parts, te.attachments = await self.get_parts(email)
 
         return te
 
@@ -42,8 +45,8 @@ class Email2TextEmail:
             return ""
 
     def get_recipients(self, email: Message) -> List[str]:
-        addresses = dict(to=[], cc=[], bcc=[])
-        for k in addresses:
+        addresses = {"to": [], "cc": [], "bcc": []}
+        for k in addresses.keys():  # :-)
             rfiled = email.get(k)
             if rfiled:
                 address_temp = re.search("<(.*?)>", rfiled)
@@ -57,7 +60,7 @@ class Email2TextEmail:
         subject = self.text_part_decode(subject)
         return subject
 
-    def get_parts(self, email: Message) -> Tuple[List[str], Dict[str, str]]:
+    async def get_parts(self, email: Message) -> Tuple[List[str], Dict[str, str]]:
         body_parts = []
         attachments = {}
         duplicated_names = {}
@@ -67,7 +70,7 @@ class Email2TextEmail:
             fn = part.get_filename()
             fn = self.text_part_decode(fn)
             if cd != 'attachment' and ct in self.part_types:
-                body_parts.append(dict(content_type=ct, content=self.get_body(part)))
+                body_parts.append(dict(content_type=ct,content=self.get_body(part)))
             else:
                 if self.attachment_flag and fn:
                     if fn not in duplicated_names:
@@ -76,9 +79,9 @@ class Email2TextEmail:
                         duplicated_names[fn] += 1
                         fn_s = fn.split('.')
                         ext = fn_s[-1]
-                        fn = '.'.join(fn_s[:-1]) + '(' + str(duplicated_names[fn]) + ').' + ext
+                        fn = '.'.join(fn_s[:-1])+'('+str(duplicated_names[fn])+').'+ext
                     if cd == "attachment" or ct == "application/octet-stream" or ct.startswith("image/"):
-                        ris = self.get_attachments(part, fn)
+                        ris = await self.get_attachments(part, fn)
                         if ris:
                             attachments.update(ris)
         return body_parts, attachments
@@ -98,12 +101,13 @@ class Email2TextEmail:
         if payload:
             if part.get_content_charset():
                 # body_part = h.handle(payload.decode(part.get_content_charset(), 'replace'))  # Questo appiattisce molto il testo: da discutere
-                body_part = payload.decode(part.get_content_charset(),'replace')  # Questo non lo appiattisce invece: valutare
+                body_part = payload.decode(part.get_content_charset(),
+                                           'replace')  # Questo non lo appiattisce invece: valutare
             else:
                 body_part = payload.decode("utf8", 'replace').strip()
         return body_part
 
-    def get_attachments(self, part: Message, fn: str) -> Dict[str, str]:
+    async def get_attachments(self, part: Message, fn: str) -> Dict[str, str]:
         attachments = {}
         if self.extractor is None:
             return attachments
@@ -112,12 +116,13 @@ class Email2TextEmail:
         ct = part.get_content_type().lower()
         if ct == 'image/jpeg':
             ext = '.jpg'
+
         with NamedTemporaryFile(suffix=ext) as tt:
             try:
                 temp = part.get_payload(decode=True)
                 if temp:
                     tt.write(temp)
-                    attachments[fn] = self.extractor.extract(tt.name)
+                    attachments[fn] = await self.extractor.extract(tt.name)
             except Exception as inst:
                 logging.debug(inst)
                 attachments[fn] = ""

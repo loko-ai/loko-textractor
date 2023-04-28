@@ -19,8 +19,8 @@ def extract_file(file: sanic.request.File, force_extraction: bool = False, confi
     res = None
     for file in file_handler(file):
         ext = get_format(file.name)
-        converter = CONV_FACTORY.get(ext)
-        extractor = Convert(asyncio.get_event_loop())
+        converter = CONV_FACTORY.get(ext)()
+        extractor = Convert()
         logger.debug(f'Converter: {converter}')
         if ext == "pdf":
             res_tmp = converter(file, force_extraction, configs=configs)
@@ -33,18 +33,13 @@ def extract_file(file: sanic.request.File, force_extraction: bool = False, confi
 
 class Convert(RESTDS4BizTextract):
 
-    def __init__(self, loop):
-        self.loop = loop
+    def __init__(self):
         super().__init__(url=None)
 
-    async def convert_file(self, filename, accept='plain/text'):
+    async def extract(self, filename, accept='plain/text'):
         with open(filename, 'rb') as f:
             res = extract_file(File(type='', body=f.read(), name=filename), configs={})
             if accept == 'plain/text':
                 return '\n'.join([el['text'] async for el in res])
             else:
                 return [el async for el in res]
-
-    def extract(self, filename):
-        return self.loop.run_until_complete(self.convert_file(filename))
-

@@ -12,7 +12,7 @@ SUPPORTED_EXT = ["jpg", "pdf", "csv", "doc", "docx", "eml", "epub", "gif", "htm"
 
 e = EnvInit()
 
-PORT = e.get("PORT", 8081)
+PORT = e.get("PORT", 8080)
 REPO_PATH = "../repo"
 PREPROCESSING_PATH = os.path.join(REPO_PATH, "preprocessing")
 ANALYZER_PATH = os.path.join(REPO_PATH, "analyzer")

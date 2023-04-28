@@ -41,7 +41,6 @@ bp = Blueprint("default", url_prefix=f"ds4biz/textract/{get_pom_major_minor()}")
 app.config["API_VERSION"] = get_pom_major_minor()
 app.config["API_TITLE"] = name
 
-
 def file(name='file'):
     def tmp(f):
         content = {"multipart/form-data": {"schema": {"type": "object", "properties": {name: {"type": "string", "format": "binary"}}}}}
@@ -49,9 +48,9 @@ def file(name='file'):
     return tmp
 
 
-@app.listener("before_server_start")
-async def before_server_start(app: Sanic, loop):
-    app.ctx.loop=loop
+# @app.listener("before_server_start")
+# async def before_server_start(app: Sanic, loop):
+#     app.ctx.loop=loop
 
 @app.exception(Exception)
 async def generic_exception(request, exception):
