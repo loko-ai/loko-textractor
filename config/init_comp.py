@@ -29,28 +29,38 @@ The output of the extraction service is a json composed of the key“ text ”an
 
 
 
-- In case *“plain/text”* is chosen, the output will be a json composed of the key “path”, which as value will have the path of the examined file, and the key "text"  which will contain the text extracted from the submitted document. You can see an example below:
+- In case *“plain/text”* is chosen, the output will be a plain text which will contains the text extracted from the submitted document. You can see an example below:
+
+
+```json
+"Lorem ipsum Lorem ipsum"
+```
+
+- If instead you selected *“application/json”* as accepted value, your output will have the key “filename”, with the name of the examined file as value, and the keys “page” and “text” for each page present in the document examined. The “page” key will have as value an integer number, representing the position (the numeration starts from 0), and the “text” key the extracted text for the relative page. Here an example:
+
+```json
+[{ "page": 0, 
+"text": "Lorem ipsum Lorem ipsum",
+"filename": "file.extension"}],
+[{"page": 1, 
+ "text": "Lorem ipsum Lorem ipsum", 
+ "filename": "file.extension"}],
+[{"page": 2, 
+ "text": "Lorem ipsum Lorem ipsum",
+ "filename": "file.extension"}]
+}
+```
+
+**HOCR Extraction:** as seen for the OCR, the output of this service depends on the type of “accept” chosen: 
+
+
+- In case *“text/html”* is chosen, the output will be a json composed of the key “path”, which as value will have the path of the examined file, and the key "text"  which will contain the text extracted from the submitted document. You can see an example below:
 
 
 ```json
 {"path": "path/to_the/file.extension"
 "text": "Lorem ipsum Lorem ipsum"}
 ```
-
-- If instead you selected *“application/json”* as accepted value, your output will have the key “path”, with the path of the examined file as value, and the key “content” which will have as value a list of two keys (“page” and “text”) for each page present in the document examined. The “page” key will have as value an integer number, representing the position (the numeration starts from 0),  and the “text” key the extracted text for the relative page. Here an example:
-
-```json
-{ "path": "path/to_the/file.extension"
-"content": [{"page": 0, 
-            "text": "Lorem ipsum Lorem ipsum"},
-            {"page": 1, 
-             "text": "Lorem ipsum Lorem ipsum"},
-            {"page": 2, 
-             "text": "Lorem ipsum Lorem ipsum"}]
-}
-```
-
-
 **Settings:** this output will only be a message which declares the setting creation.
 
 
@@ -66,11 +76,23 @@ group_custom_settings = "Custom Settings"
 group_delete_settings = "Delete Settings"
 
 accept_hocr = Select(name="accept_hocr", label="Accept",
-                     options=["application/json", "text/html"],
+                     options=["application/json", "text/html", "application/pdf"],
                      helper="Select an output format, default='application/json'",
                      description="format and content type of the output",
                      value="application/json",
                      group=group_hocr_extraction)
+
+analyzer_hocr = AsyncSelect("analyzer_hocr", label="Analyzer",
+                       url="http://localhost:9999/routes/loko-textractor/ds4biz/textract/0.1/analyzer",
+                       helper="Select an analyzer, if not set the default analyzer settings will be used",
+                       description="An analyzer object is compose of different configurations to run the tesseract engine",
+                       group=group_hocr_extraction)
+
+pre_processing_hocr = AsyncSelect("preprocessing_hocr", label="Preprocessing",
+                             url="http://localhost:9999/routes/loko-textractor/ds4biz/textract/0.1/preprocessing",
+                             helper="Select a preprocessing, if not set no pre-processing will be done",
+                             description="A preprocessing object is compose of different configurations to prepare the input image",
+                             group=group_hocr_extraction)
 
 ####
 force_ocr = Arg("force_ocr", label="Force OCR", type="boolean",
@@ -254,7 +276,7 @@ preproc_name_delete = AsyncSelect(name="preproc_name_delete", label="Pre-Process
 args = [force_ocr, analyzer, pre_processing, accept, settings_type, new_analyzer_name, oem_type, psm_type, lang,
         whitelist, blacklist,
         vocab_file, patterns_file, new_preprocessing_name, dpi, zoom, zoom_level, interpolation_mode,
-        analyzer_name_delete, preproc_name_delete, accept_hocr]
+        analyzer_name_delete, preproc_name_delete, analyzer_hocr, pre_processing_hocr, accept_hocr]
 
 inputs = [Input(id="ocr_extraction", service="loko_extract", to="ocr_extraction"),
           Input(id="hocr_extraction", service="loko_hocr", to="hocr_extraction"),

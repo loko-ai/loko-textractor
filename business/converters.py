@@ -4,6 +4,7 @@ import io
 import logging
 import os
 import re
+from urllib.parse import unquote
 
 import fitz
 import sanic
@@ -40,6 +41,7 @@ class PDF2text:
         content = file.body
         doc = fitz.open("pdf", content)
         logger.debug(doc)
+        filename = unquote(file.name)
         for i, page in enumerate(doc):
             if force_extraction:
                 text = ''
@@ -52,14 +54,14 @@ class PDF2text:
                     img = manipulate_pdf_page(page, dpi)
                     text += await loop.run_in_executor(POOL, functools.partial(tesseract), img)
                     # text = tesseract(img)
-                    yield dict(page=i, text=text, filename=file.name)
+                    yield dict(page=i, text=text, filename=filename)
                 else:
                     logger.debug("machine readable file... getting text...")
-                    yield dict(page=i, text=text, filename=file.name)
+                    yield dict(page=i, text=text, filename=filename)
             except Exception as inst:
                 logging.exception(inst)
                 if text:
-                    yield dict(page=i, text=text, filename=file.name)
+                    yield dict(page=i, text=text, filename=filename)
 
 
 class EML2text:
@@ -69,12 +71,11 @@ class EML2text:
         try:
             content = file.body
             if hasattr(content, "read"):
-                text = self.e2t(email.message_from_binary_file(content))
+                te = self.e2t(email.message_from_binary_file(content))
             else:
                 te = await self.e2t(email.message_from_bytes(content))
 
-                print('qui2')
-                text = te2text(te)
+                # text = te2text(te) #???
             yield te.__dict__
         except Exception as inst:
             logger.exception(inst)
@@ -89,12 +90,14 @@ class IMG2text:
 
         try:
             content = file.body
+            filename = unquote(file.name)
+
             if hasattr(content, "read"):
 
                 text = tesseract(Image.open(content))
             else:
                 text = tesseract(Image.open(io.BytesIO(content)))
-            yield dict(text=text, filename=file.name)
+            yield dict(text=text, filename=filename)
         except Exception as inst:
             logger.exception(inst)
 
@@ -105,11 +108,13 @@ class TXT2text:
         try:
             # text = textract.process(fname)
             content = file.body
+            filename = unquote(file.name)
+
             if hasattr(content, "read"):
                 text = content.read().decode('ISO-8859-1')
             else:
                 text = content.decode('ISO-8859-1')
-            yield dict(text=text, filename=file.name)
+            yield dict(text=text, filename=filename)
         except Exception as inst:
             logger.exception(inst)
 
@@ -124,11 +129,12 @@ class DOC2text:
 
     async def __call__(self, file: sanic.request.File, **kwargs):
         content = file.body
+        filename = unquote(file.name)
         if hasattr(content, "read"):
             text = self.convert(content.read())
         else:
             text = self.convert(content)
-        yield dict(text=text, filename=file.name)
+        yield dict(text=text, filename=filename)
 
     def convert(self, content):
         soup = bs(content, features="lxml")
@@ -150,6 +156,8 @@ class DOCX2text:
     async def __call__(self, file: sanic.request.File, **kwargs):
         try:
             content = file.body
+            filename = unquote(file.name)
+
             # text = textract.process(fname)
             if hasattr(content, "read"):
                 source_stream = io.StringIO(content.read())
@@ -172,7 +180,7 @@ class DOCX2text:
                     p_texts.append(p.text)
                 text = '\n'.join(p_texts)
                 # text = content.decode()
-            yield dict(text=text, filename=file.name)
+            yield dict(text=text, filename=filename)
         except Exception as inst:
             logger.exception(inst)
 
@@ -199,13 +207,15 @@ class DOCDummyConverter:
     async def __call__(self, file: sanic.request.File, **kwargs):
         try:
             content = file.body
+            filename = unquote(file.name)
+
             # text = textract.process(fname)
             if hasattr(content, "read"):
                 text = content.read().decode('latin')
             else:
                 text = content.decode('latin')
             text = self.extract(text)
-            yield dict(text=text, filename=file.name)
+            yield dict(text=text, filename=filename)
         except Exception as inst:
             logger.exception(inst)
 
@@ -235,7 +245,7 @@ class PDF2hocr:
         if output == "application/pdf":
             ret_pdf = PdfMerger()
         else:
-            hocr_output = dict()
+            hocr_output = []
 
         configs = kwargs.get('configs')
         configs["hocr"] = True
@@ -249,16 +259,17 @@ class PDF2hocr:
         content = file.body
         doc = fitz.open("pdf", content)
         logger.debug(doc)
-
+        filename = unquote(file.name)
         for i, page in enumerate(doc):
             logger.info(f"Pagina {i}")
 
             img = manipulate_pdf_page(page, dpi)
             res = await loop.run_in_executor(POOL, functools.partial(tesseract), img)
+
             if output == "application/pdf":
                 ret_pdf.append(res)
             else:
-                hocr_output[str(i)] = res
+                hocr_output.append(dict(page=i, content=res, filename=filename))
         logger.debug("pdf hocr done...")
 
         if output == "application/pdf":
@@ -266,7 +277,6 @@ class PDF2hocr:
             ret_pdf.write(buffer)
             buffer.seek(0)
             return buffer
-
         return hocr_output
 
 

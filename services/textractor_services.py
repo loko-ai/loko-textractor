@@ -41,16 +41,13 @@ bp = Blueprint("default", url_prefix=f"ds4biz/textract/{get_pom_major_minor()}")
 app.config["API_VERSION"] = get_pom_major_minor()
 app.config["API_TITLE"] = name
 
+
 def file(name='file'):
     def tmp(f):
-        content = {"multipart/form-data": {"schema": {"type": "object", "properties": {name: {"type": "string", "format": "binary"}}}}}
+        content = {"multipart/form-data": {
+            "schema": {"type": "object", "properties": {name: {"type": "string", "format": "binary"}}}}}
         return openapi.body(content, required=True)(f)
     return tmp
-
-
-# @app.listener("before_server_start")
-# async def before_server_start(app: Sanic, loop):
-#     app.ctx.loop=loop
 
 @app.exception(Exception)
 async def generic_exception(request, exception):
@@ -67,8 +64,6 @@ async def generic_exception(request, exception):
         return sanic.response.json(j, status=status_code, headers={"Access-Control-Allow-Origin": "*"})
     except Exception as inst:
         logger.exception(inst)
-
-
 
 
 def stream_resp(obj):
@@ -93,7 +88,6 @@ def stream_resp(obj):
                    location="query", schema=bool)
 @file()
 async def convert(request):
-
     configs = get_configurations_files(request.args)
     logger.debug("selected config: %s", configs)
 
@@ -107,7 +101,7 @@ async def convert(request):
     force_extraction = eval(request.args.get("force_ocr_extraction", "false").capitalize())
     logger.debug(force_extraction)
     res = extract_file(file, force_extraction, configs=configs)
-    if accept_ct=='plain/text':
+    if accept_ct == 'plain/text':
         response = await request.respond(content_type='plain/text; charset=utf-8')
         async for page in res:
             await response.send(page['text'])
@@ -116,7 +110,7 @@ async def convert(request):
     if accept_ct == 'application/jsonl':
         async def gen():
             async for page in res:
-                yield json.dumps(page)+'\n'
+                yield json.dumps(page) + '\n'
         return sanic.response.ResponseStream(stream_resp(gen()), headers={'content-type': 'application/jsonl'})
     ### if accept is not one of the above return content-type: application/json ###
     return sanic.response.ResponseStream(stream_resp(stream_json(res)), headers={'content-type': 'application/json'})
@@ -470,7 +464,6 @@ async def list_files(request, type):
 @openapi.summary(' ')
 @extract_value_args(file=True)
 async def loko_extract(file, args):
-
     accept_ct = args.get("accept", "application/json")
     analyzer = args.get("analyzer")
     pre_processing = args.get("preprocessing")
@@ -478,24 +471,6 @@ async def loko_extract(file, args):
 
     logger.debug(f'Filename: {file[0].name}')
 
-    if analyzer:
-        json_fs_dao = JSONFSDAO(ANALYZER_PATH)
-        if analyzer not in list(json_fs_dao.all()):
-            logger.warning(
-                'Analyzer {anal} not anymore available. Extraction will be performed without considering '
-                'it.'.format(
-                    anal=analyzer))
-            analyzer = None
-
-    if pre_processing:
-
-        json_fs_dao = JSONFSDAO(PREPROCESSING_PATH)
-
-        if pre_processing not in list(json_fs_dao.all()):
-            logger.warning(
-                "Pre-processing {preproc} not anymore available. Extraction will be performed without considering it.".format(
-                    preproc=pre_processing))
-            pre_processing = None
 
     params = dict(force_ocr=str(force_ocr).lower(), analyzer_configs=analyzer,
                   preprocessing_configs=pre_processing,
@@ -528,6 +503,7 @@ async def loko_extract(file, args):
     ### if accept is not one of the above return content-type: application/json ###
     return sanic.response.ResponseStream(stream_resp(stream_json(res)), headers={'content-type': 'application/json'})
 
+
 # @bp.post("/hocr")
 # @doc.description(
 #     'Content Negotiation:<br>application/json->bounding boxes(default)<br>application/pdf->searchable pdf<br>text/html->html tags')
@@ -543,50 +519,24 @@ async def loko_extract(file, args):
 @openapi.tag('loko')
 @openapi.summary(' ')
 @extract_value_args(file=True)
-async def hocr(file, args):
-
+async def loko_hocr(file, args):
+    logger.debug(f"args: {args}")
     accept_ct = args.get("accept_hocr", "application/json")
-    analyzer = args.get("analyzer")
-    pre_processing = args.get("preprocessing")
-    force_ocr = args.get("force_ocr")
-
-    if analyzer:
-        json_fs_dao = JSONFSDAO(ANALYZER_PATH)
-        if analyzer not in list(json_fs_dao.all()):
-            logger.warning(
-                'Analyzer {anal} not anymore available. Extraction will be performed without considering '
-                'it.'.format(
-                    anal=analyzer))
-            analyzer = None
-
-    if pre_processing:
-
-        json_fs_dao = JSONFSDAO(PREPROCESSING_PATH)
-
-        if pre_processing not in list(json_fs_dao.all()):
-            logger.warning(
-                "Pre-processing {preproc} not anymore available. Extraction will be performed without considering it.".format(
-                    preproc=pre_processing))
-            pre_processing = None
-
-    params = dict(force_ocr=str(force_ocr).lower(), analyzer_configs=analyzer,
-                  preprocessing_configs=pre_processing,
-                  # postprocessing_configs=post_processing
-                  )
-
-    configs = get_configurations_files(params)
-    logger.debug("selected config: %s", configs)
+    analyzer = args.get("analyzer_hocr")
+    preprocessing = args.get("preprocessing_hocr")
+    # force_ocr = args.get("force_ocr")
+    config_dict = dict(analyzer_configs=analyzer, preprocessing_configs=preprocessing)
+    configs = get_configurations_files(config_dict)
+    logger.debug(f"configs: {configs}")
 
     if isinstance(file, list):
         file = file[0]
 
     logger.debug("HOCR on file %s" % file.name)
-
     output = await hocr_extract_file(file=file, output=accept_ct, configs=configs)
     # output = hocr(file.body, ct=magic.from_buffer(file.body, mime=True))
     # print(output.getvalue())
     # ret = response_converter([el async for el in output], accept)
-
     if accept_ct == "application/pdf":
         original_ext = file.name.split('.')[-1].lower()
         if original_ext != ".pdf":
@@ -594,7 +544,6 @@ async def hocr(file, args):
         else:
             headers = {'Content-Disposition': 'attachment; filename="{}"'.format(file.name)}
         return sanic.response.raw(output.getvalue(), headers=headers)
-
     return sanic.response.json(output)
 
 
@@ -603,10 +552,7 @@ async def hocr(file, args):
 @openapi.summary(' ')
 @extract_value_args()
 async def settings2(value, args):
-
     settings_type = args.get("settings_type")
-
-
 
     if settings_type == "Pre-Processing":
 
@@ -647,9 +593,6 @@ async def settings2(value, args):
         patterns_file = args.get("patterns_file")
         vocab_file = args.get("vocab_file")
 
-
-
-
         logger.debug("creating analyzer...")
         oem = int(oem_type.split(":")[0])
         psm = int(psm_type.split(":")[0])
@@ -666,8 +609,6 @@ async def settings2(value, args):
             data = '\n'.join(data[0].split(','))
             txt_fs_dao.save(data, name)
             logger.debug("file saved")
-
-
 
         if patterns_file != "":
             logger.debug("creating patterns file")
@@ -694,13 +635,13 @@ async def settings2(value, args):
 
         return sanic.response.json("analyzer configuration saved as '%s'" % name)
 
+
 @app.post("/loko_delete_settings")
 @openapi.tag('loko')
 @openapi.summary(' ')
 @extract_value_args()
 async def settings(value, args):
-
-    logger.debug(("ARGS",args))
+    logger.debug(("ARGS", args))
 
     aname = args.get("analyzer_name_delete")
     pname = args.get("preproc_name_delete")
@@ -711,7 +652,6 @@ async def settings(value, args):
     if aname:
         logger.debug("analyzer to delete: %s" % aname)
         json_fs_dao = JSONFSDAO(ANALYZER_PATH)
-
 
         if aname in list(json_fs_dao.all()):
             json_fs_dao.remove(aname)
@@ -731,14 +671,14 @@ async def settings(value, args):
             if patterns_name in list(txt_fs_dao.all()):
                 txt_fs_dao.remove(patterns_name)
                 logger.debug(patterns_name)
-            ret_anal="analyzer deleted {}".format(aname)
+            ret_anal = "analyzer deleted {}".format(aname)
         else:
             ret_anal = "analyzer configuration '{anal}' already deleted".format(anal=aname)
 
     if pname:
 
         json_fs_dao = JSONFSDAO(PREPROCESSING_PATH)
-        if pname in list(json_fs_dao.all()) :
+        if pname in list(json_fs_dao.all()):
             json_fs_dao.remove(pname)
             ret_preproc = "preprocessing deleted {}".format(pname)
         else:

@@ -13,7 +13,6 @@ def get_configurations_files(args: dict):
         config_name = args.get(config+'_configs')
         if config_name:
             json_fs_dao = JSONFSDAO(path)
-            config_name = config_name
             if not config_name in json_fs_dao.all():
                 raise Exception("'%s' %s configuration does not exist!")
             else:

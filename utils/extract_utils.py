@@ -32,7 +32,7 @@ def extract_file(file: sanic.request.File, force_extraction: bool = False, confi
 
 
 class Convert(RESTDS4BizTextract):
-
+##TODO:applicare ai file di attachment analyzer e preprocessing assegnati
     def __init__(self):
         super().__init__(url=None)
 

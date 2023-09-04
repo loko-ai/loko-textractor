@@ -14,6 +14,7 @@ e = EnvInit()
 
 PORT = e.get("PORT", 8080)
 REPO_PATH = "../repo"
+print(f"absol {os.getcwd()}")
 PREPROCESSING_PATH = os.path.join(REPO_PATH, "preprocessing")
 ANALYZER_PATH = os.path.join(REPO_PATH, "analyzer")
 POSTPROCESSING_PATH = os.path.join(REPO_PATH, "postprocessing")
