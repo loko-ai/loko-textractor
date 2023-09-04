@@ -280,7 +280,9 @@ class PDF2hocr:
         return hocr_output
 
 
+
 class IMG2hocr:
+    #TODO gestire IMG2hocr con pdf e altri formati e uniformarlo al pdf2hocr a livello di struttura output
     async def __call__(self, file: sanic.request.File,
                        output, **kwargs):
 
@@ -292,13 +294,14 @@ class IMG2hocr:
 
         try:
             content = file.body
+            #filename = unquote(file.name)
             if hasattr(content, "read"):
 
                 res = tesseract(Image.open(content))
             else:
                 res = tesseract(Image.open(io.BytesIO(content)))
             if output == "application/json":
-                return res  # dict(content=res, filename=file.name)
+                return res  # dict(content=res, filename=filename)
             return res
         except Exception as inst:
             logger.exception(inst)
