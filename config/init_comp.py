@@ -36,7 +36,7 @@ The output of the extraction service is a json composed of the key“ text ”an
 "Lorem ipsum Lorem ipsum"
 ```
 
-- If instead you selected *“application/json”* as accepted value, your output will have the key “filename”, with the name of the examined file as value, and the keys “page” and “text” for each page present in the document examined. The “page” key will have as value an integer number, representing the position (the numeration starts from 0), and the “text” key the extracted text for the relative page. Here an example:
+- If instead you selected *“application/json”* as accepted value, your output will be a list of jsons. Each json will have the key “filename”, with the name of the examined file as value, and the keys “page” and “text” for each page present in the document examined. The “page” key will have as value an integer number, representing the position (the numeration starts from 0), and the “text” key the extracted text for the relative page. Here an example:
 
 ```json
 [{ "page": 0, 
@@ -54,13 +54,50 @@ The output of the extraction service is a json composed of the key“ text ”an
 **HOCR Extraction:** as seen for the OCR, the output of this service depends on the type of “accept” chosen: 
 
 
-- In case *“text/html”* is chosen, the output will be a json composed of the key “path”, which as value will have the path of the examined file, and the key "text"  which will contain the text extracted from the submitted document. You can see an example below:
+- If “text/json” is selected, the output will consist of a list of JSON objects, each containing the keys “filename,” "content," and "page". The "filename" key will hold the name of the examined file as its value. The "content" key's value will be a list of dictionaries, where each dictionary contains the text and the relative position coordinates. Specifically, the keys contained within each dictionary are "text", "top", "left", "w", "h", and "line". The "page" key will store the relative page number (starting from 0). An example is provided below: The key "page" will store the relative page number (starting from 0). An example is provided below:
+
 
 
 ```json
-{"path": "path/to_the/file.extension"
-"text": "Lorem ipsum Lorem ipsum"}
+[{"page":0,
+"content":[
+    {"text":"Monde","top":596,"left":87,"w":126,"h":26,"line":6},
+    {"text":"2°","top":592,"left":190,"w":27,"h":35,"line":6},
+    {"text":"ma","top":591,"left":234,"w":63,"h":23,"line":6},
+    {"text":"RATA","top":591,"left":417,"w":126,"h":27,"line":6}],
+"filename":"filename"},
+{ "page":1, 
+"content":[
+    "text":"Monde","top":596,"left":87,"w":126,"h":26,"line":6},
+    {"text":"2°","top":592,"left":190,"w":27,"h":35,"line":6},
+    {"text":"ma","top":591,"left":234,"w":63,"h":23,"line":6},
+    {"text":"RATA","top":591,"left":417,"w":126,"h":27,"line":6}],
+"filename":"filename"},
+...
+]
 ```
+
+
+
+- If, otherwise, “text/html” is selected, the output format is the same as for "text/json", but the value of the "content" key will be the extracted content in HTML format. Example:
+
+
+```json
+[{"page":0,
+"content":"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\"\n    \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">\n <head>\n  <title></title>\n ...",
+"filename":"filename"},
+{"page":1,
+"content":"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\"\n    \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">\n <head>\n  <title></title>\n ...",
+"filename":"filename"},
+...
+]
+```
+
+
+- Finally you can opt for *“application/pdf”*, which will return a pdf file as output.
+
+
+
 **Settings:** this output will only be a message which declares the setting creation.
 
 
