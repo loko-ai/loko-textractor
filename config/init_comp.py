@@ -25,7 +25,9 @@ Accepted file extension: jpeg, docx, pdf, txt, jpg, png, eml.
 
 **Delete Settings:** if you want to delete an already created settings you can link a trigger to this input and specify which settings you want to delete. Warning: this action is permanent. 
 
-
+**HOCR Extraction:** it receives the same input of the **OCR Extraction**, generally using a FileReader component. 
+You can choose to set a custom analyzer and preprocessing to improve the document extraction. The  “Accept” field allows
+ to receive the output as "application/json", "text/html" or "application/pdf". 
 
 ### Output
 The output of the extraction service is a json composed of the key“ text ”and the text extracted from the submitted document as a value.
