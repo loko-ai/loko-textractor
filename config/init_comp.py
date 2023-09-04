@@ -14,7 +14,7 @@ TEXTRACT has three different input:
 - HOCR Extraction
 
 **OCR Extraction:** generally, a FileReader component must be linked to this input, and the service will directly 
-extract the text from the input file. You can choose to receive plain text ("plain/text") representation, 
+extract the text from the input file. You can set a custom **Analyzer** and **Preprocessing** and choose to receive plain text ("plain/text") representation, 
 opt for a JSON format ("application/json") that treats each page separately, or select a streamed JSON format ("application/jsonl"). 
 This choice is made in the “Accept” field. 
 Accepted file extension: jpeg, docx, pdf, txt, jpg, png, eml.
@@ -63,7 +63,7 @@ The output of the extraction service is a json composed of the key“ text ”an
 **HOCR Extraction:** as seen for the OCR, the output of this service depends on the type of “accept” chosen: 
 
 
-- If “text/json” is selected, the output will consist of a list of JSON objects, each containing the keys “filename,” "content," and "page". The "filename" key will hold the name of the examined file as its value. The "content" key's value will be a list of dictionaries, where each dictionary contains the text and the relative position coordinates. Specifically, the keys contained within each dictionary are "text", "top", "left", "w", "h", and "line". The "page" key will store the relative page number (starting from 0). An example is provided below: The key "page" will store the relative page number (starting from 0). An example is provided below:
+- If “application/json” is selected, the output will consist of a list of JSON objects, each containing the keys “filename,” "content," and "page". The "filename" key will hold the name of the examined file as its value. The "content" key's value will be a list of dictionaries, where each dictionary contains the text and the relative position coordinates. Specifically, the keys contained within each dictionary are "text", "top", "left", "w", "h", and "line". The "page" key will store the relative page number (starting from 0). An example is provided below: The key "page" will store the relative page number (starting from 0). An example is provided below:
 
 
 
@@ -88,7 +88,7 @@ The output of the extraction service is a json composed of the key“ text ”an
 
 
 
-- If, otherwise, “text/html” is selected, the output format is the same as for "text/json", but the value of the "content" key will be the extracted content in HTML format. Example:
+- If, otherwise, “text/html” is selected, the output format is the same as for "application/json", but the value of the "content" key will be the extracted content in HTML format. Example:
 
 
 ```json
