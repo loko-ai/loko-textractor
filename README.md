@@ -18,7 +18,7 @@ You can drag and drop the component and use it in your flow:
 ### OCR Extraction
 
 Generally, a **FileReader** component must be linked to this input and the service will directly extract the text from 
-the input file.You can set a custom **Analyzer** and **Preprocessing** and choose to receive plain text ("plain/text") representation, 
+the input file.You can set a custom **Analyzer** and **Preprocessing** to improve document extraction and choose to receive plain text ("plain/text") representation, 
 opt for a JSON format ("application/json") that treats each page separately, or select a streamed JSON format ("application/jsonl"). 
 This choice is made in the “Accept” field inside the components. Accepted file extension: pdf, txt, jpg, jpeg, png, tif, eml, p7m, rar, zip, docx. 
 
@@ -26,7 +26,7 @@ This choice is made in the “Accept” field inside the components. Accepted fi
 
 ### hOCR Extraction
 
-You can use hOCR to include bounding boxes information to your output. The output format options are: 
+You can use hOCR to include bounding boxes information to your output, using also a custom **Analyzer** and **Preprocessing** to enhance the extraction performance. The output format options are: 
 "application/json", "text/html", "application/pdf".
 
 <p align="center"><img src="https://user-images.githubusercontent.com/30443495/232806746-10ab7af8-56c7-423d-a0a7-7a1d0fcbf765.png" width="80%" /></p>
