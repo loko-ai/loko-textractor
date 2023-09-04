@@ -9,16 +9,21 @@ The TEXTRACT component allows you to use OCR technologies to extract textual con
 
 TEXTRACT has three different input:
 - OCR Extraction
-- Settings
+- Custom Settings
 - Delete Settings
+- HOCR Extraction
 
-**OCR Extraction:** generally, a FileReader component must be linked to this input, and the service will directly extract the text from the input file. You can decide if you want a plain text ("plain/text") or in a json format(“application/json”) which will treat separately each page, by selecting in the **“Accept”** field the formats which suits you the most: this parameter changes your output type. Accepted file extension: jpeg, docx, pdf, txt, jpg, png, eml.
+**OCR Extraction:** generally, a FileReader component must be linked to this input, and the service will directly 
+extract the text from the input file. You can choose to receive plain text ("plain/text") representation, 
+opt for a JSON format ("application/json") that treats each page separately, or select a streamed JSON format ("application/jsonl"). 
+This choice is made in the “Accept” field. 
+Accepted file extension: jpeg, docx, pdf, txt, jpg, png, eml.
 
 
-**Settings:** a trigger must be linked to this input, and using the designed parameters it's possible to create an analyzer or a pre-processing setting. The analyzer will change the OCR parameter,  whilst the pre-processing will change the way in which the file will be "seen" by the OCR engine. Once a setting is created, in order to be used in an extraction you need to specify it in the OCR Extraction parameters.
+**Custom Settings:** a trigger must be linked to this input, and using the designed parameters it's possible to create an analyzer or a pre-processing setting. The analyzer will change the OCR parameter,  whilst the pre-processing will change the way in which the file will be "seen" by the OCR engine. Once a setting is created, in order to be used in an extraction you need to specify it in the OCR Extraction parameters.
 
 
-**Delete Settings:** if you want to delete an already created settings you can link a trigger to this input and specify which settings you want to delete. Warning: this action is permanent.
+**Delete Settings:** if you want to delete an already created settings you can link a trigger to this input and specify which settings you want to delete. Warning: this action is permanent. 
 
 
 
@@ -50,6 +55,8 @@ The output of the extraction service is a json composed of the key“ text ”an
  "filename": "file.extension"}]
 }
 ```
+
+- The *“application/jsonl”* option returns the same output of the *“application/json”* one but pages are immediately returned when they are extracted.
 
 **HOCR Extraction:** as seen for the OCR, the output of this service depends on the type of “accept” chosen: 
 
