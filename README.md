@@ -29,7 +29,7 @@ This choice is made in the “Accept” field inside the components. Accepted fi
 You can use hOCR to include bounding boxes information to your output, using also a custom **Analyzer** and **Preprocessing** to enhance the extraction performance. The output format options are: 
 "application/json", "text/html", "application/pdf".
 
-<p align="center"><img src="https://user-images.githubusercontent.com/30443495/232806746-10ab7af8-56c7-423d-a0a7-7a1d0fcbf765.png" width="80%" /></p>
+<p align="center"><img src="https://github.com/loko-ai/loko-textractor/assets/34518514/11ebd027-3bcf-434f-81f7-f30c158d1a73" width="80%" /></p>
 
 ### Settings
 
