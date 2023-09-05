@@ -5,13 +5,6 @@
       "upload": {
         "repository": "livetech"
       }
-    },
-    "docker-build": {
-      "company": "registry.livetech.site",
-      "build-args": {
-        "user": "piplivetech",
-        "password": "pip2018"
-      }
     }
   }
 }
