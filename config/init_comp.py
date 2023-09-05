@@ -2,7 +2,7 @@ from loko_extensions.model.components import Component, save_extensions, Input, 
     Output
 
 textractor_doc = '''### Description
-The TEXTRACT component allows you to use OCR technologies to extract textual content - from machine-readable documents - images or mixed content. One of TEXTRACT's embedded technologies is Tesseract 4, which offers the possibility to improve the process of recognition of characters and words through the use of an LSTM neural network (as default). If you want, you can also create your own settings and modify both the OCR engine and the pre-processing that must be applied to the input files.
+The TEXTRACT component allows you to use OCR (and HOCR) technologies to extract textual content - from machine-readable documents - images or mixed content. One of TEXTRACT's embedded technologies is Tesseract 4, which offers the possibility to improve the process of recognition of characters and words through the use of an LSTM neural network (as default). If you want, you can also create your own settings and modify both the OCR engine and the pre-processing that must be applied to the input files.
 
 ### Input
 
@@ -63,7 +63,7 @@ The output of the extraction service is a json composed of the key“ text ”an
 **HOCR Extraction:** as seen for the OCR, the output of this service depends on the type of “accept” chosen: 
 
 
-- If “application/json” is selected, the output will consist of a list of JSON objects, each containing the keys “filename,” "content," and "page". The "filename" key will hold the name of the examined file as its value. The "content" key's value will be a list of dictionaries, where each dictionary contains the text and the relative position coordinates. Specifically, the keys contained within each dictionary are "text", "top", "left", "w", "h", and "line". The "page" key will store the relative page number (starting from 0). An example is provided below: The key "page" will store the relative page number (starting from 0). An example is provided below:
+- If “application/json” is selected, the output will consist of a list of JSON objects, each containing the keys “filename,” "content," and "page". The "filename" key will hold the name of the examined file as its value. The "content" key's value will be a list of dictionaries, where each dictionary contains the text and the relative position coordinates. Specifically, the keys contained within each dictionary are "text", "top", "left", "w", "h", and "line". The "page" key will store the relative page number (starting from 0). An example is provided below: 
 
 
 
