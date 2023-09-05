@@ -3,8 +3,8 @@ from aiostream.stream import merge
 
 from business.converters import CONV_FACTORY, hocr_f
 from business.handlers import file_handler
+from loguru import logger
 from utils.format_utils import get_format
-from utils.logger_utils import logger
 
 
 #

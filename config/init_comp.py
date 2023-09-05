@@ -2,25 +2,32 @@ from loko_extensions.model.components import Component, save_extensions, Input, 
     Output
 
 textractor_doc = '''### Description
-The TEXTRACT component allows you to use OCR technologies to extract textual content - from machine-readable documents - images or mixed content. One of TEXTRACT's embedded technologies is Tesseract 4, which offers the possibility to improve the process of recognition of characters and words through the use of an LSTM neural network (as default). If you want, you can also create your own settings and modify both the OCR engine and the pre-processing that must be applied to the input files.
+The TEXTRACT component allows you to use OCR (and HOCR) technologies to extract textual content - from machine-readable documents - images or mixed content. One of TEXTRACT's embedded technologies is Tesseract 4, which offers the possibility to improve the process of recognition of characters and words through the use of an LSTM neural network (as default). If you want, you can also create your own settings and modify both the OCR engine and the pre-processing that must be applied to the input files.
 
 ### Input
 
 
 TEXTRACT has three different input:
 - OCR Extraction
-- Settings
+- Custom Settings
 - Delete Settings
+- HOCR Extraction
 
-**OCR Extraction:** generally, a FileReader component must be linked to this input, and the service will directly extract the text from the input file. You can decide if you want a plain text ("plain/text") or in a json format(“application/json”) which will treat separately each page, by selecting in the **“Accept”** field the formats which suits you the most: this parameter changes your output type. Accepted file extension: jpeg, docx, pdf, txt, jpg, png, eml.
+**OCR Extraction:** generally, a FileReader component must be linked to this input, and the service will directly 
+extract the text from the input file. You can set a custom **Analyzer** and **Preprocessing** and choose to receive plain text ("plain/text") representation, 
+opt for a JSON format ("application/json") that treats each page separately, or select a streamed JSON format ("application/jsonl"). 
+This choice is made in the “Accept” field. 
+Accepted file extension: jpeg, docx, pdf, txt, jpg, png, eml.
 
 
-**Settings:** a trigger must be linked to this input, and using the designed parameters it's possible to create an analyzer or a pre-processing setting. The analyzer will change the OCR parameter,  whilst the pre-processing will change the way in which the file will be "seen" by the OCR engine. Once a setting is created, in order to be used in an extraction you need to specify it in the OCR Extraction parameters.
+**Custom Settings:** a trigger must be linked to this input, and using the designed parameters it's possible to create an analyzer or a pre-processing setting. The analyzer will change the OCR parameter,  whilst the pre-processing will change the way in which the file will be "seen" by the OCR engine. Once a setting is created, in order to be used in an extraction you need to specify it in the OCR Extraction parameters.
 
 
-**Delete Settings:** if you want to delete an already created settings you can link a trigger to this input and specify which settings you want to delete. Warning: this action is permanent.
+**Delete Settings:** if you want to delete an already created settings you can link a trigger to this input and specify which settings you want to delete. Warning: this action is permanent. 
 
-
+**HOCR Extraction:** it receives the same input of the **OCR Extraction**, generally using a FileReader component. 
+You can choose to set a custom analyzer and preprocessing to improve the document extraction. The  “Accept” field allows
+ to receive the output as "application/json", "text/html" or "application/pdf". 
 
 ### Output
 The output of the extraction service is a json composed of the key“ text ”and the text extracted from the submitted document as a value.
@@ -29,26 +36,75 @@ The output of the extraction service is a json composed of the key“ text ”an
 
 
 
-- In case *“plain/text”* is chosen, the output will be a json composed of the key “path”, which as value will have the path of the examined file, and the key "text"  which will contain the text extracted from the submitted document. You can see an example below:
+- In case *“plain/text”* is chosen, the output will be a plain text which will contains the text extracted from the submitted document. You can see an example below:
 
 
 ```json
-{"path": "path/to_the/file.extension"
-"text": "Lorem ipsum Lorem ipsum"}
+"Lorem ipsum Lorem ipsum"
 ```
 
-- If instead you selected *“application/json”* as accepted value, your output will have the key “path”, with the path of the examined file as value, and the key “content” which will have as value a list of two keys (“page” and “text”) for each page present in the document examined. The “page” key will have as value an integer number, representing the position (the numeration starts from 0),  and the “text” key the extracted text for the relative page. Here an example:
+- If instead you selected *“application/json”* as accepted value, your output will be a list of jsons. Each json will have the key “filename”, with the name of the examined file as value, and the keys “page” and “text” for each page present in the document examined. The “page” key will have as value an integer number, representing the position (the numeration starts from 0), and the “text” key the extracted text for the relative page. Here an example:
 
 ```json
-{ "path": "path/to_the/file.extension"
-"content": [{"page": 0, 
-            "text": "Lorem ipsum Lorem ipsum"},
-            {"page": 1, 
-             "text": "Lorem ipsum Lorem ipsum"},
-            {"page": 2, 
-             "text": "Lorem ipsum Lorem ipsum"}]
+[{ "page": 0, 
+"text": "Lorem ipsum Lorem ipsum",
+"filename": "file.extension"}],
+[{"page": 1, 
+ "text": "Lorem ipsum Lorem ipsum", 
+ "filename": "file.extension"}],
+[{"page": 2, 
+ "text": "Lorem ipsum Lorem ipsum",
+ "filename": "file.extension"}]
 }
 ```
+
+- The *“application/jsonl”* option returns the same output of the *“application/json”* one but pages are immediately returned when they are extracted.
+
+**HOCR Extraction:** as seen for the OCR, the output of this service depends on the type of “accept” chosen: 
+
+
+- If “application/json” is selected, the output will consist of a list of JSON objects, each containing the keys “filename,” "content," and "page". The "filename" key will hold the name of the examined file as its value. The "content" key's value will be a list of dictionaries, where each dictionary contains the text and the relative position coordinates. Specifically, the keys contained within each dictionary are "text", "top", "left", "w", "h", and "line". The "page" key will store the relative page number (starting from 0). An example is provided below: 
+
+
+
+```json
+[{"page":0,
+"content":[
+    {"text":"Monde","top":596,"left":87,"w":126,"h":26,"line":6},
+    {"text":"2°","top":592,"left":190,"w":27,"h":35,"line":6},
+    {"text":"ma","top":591,"left":234,"w":63,"h":23,"line":6},
+    {"text":"RATA","top":591,"left":417,"w":126,"h":27,"line":6}],
+"filename":"filename"},
+{ "page":1, 
+"content":[
+    "text":"Monde","top":596,"left":87,"w":126,"h":26,"line":6},
+    {"text":"2°","top":592,"left":190,"w":27,"h":35,"line":6},
+    {"text":"ma","top":591,"left":234,"w":63,"h":23,"line":6},
+    {"text":"RATA","top":591,"left":417,"w":126,"h":27,"line":6}],
+"filename":"filename"},
+...
+]
+```
+
+
+
+- If, otherwise, “text/html” is selected, the output format is the same as for "application/json", but the value of the "content" key will be the extracted content in HTML format. Example:
+
+
+```json
+[{"page":0,
+"content":"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\"\n    \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">\n <head>\n  <title></title>\n ...",
+"filename":"filename"},
+{"page":1,
+"content":"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\"\n    \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">\n <head>\n  <title></title>\n ...",
+"filename":"filename"},
+...
+]
+```
+
+
+- Finally you can opt for *“application/pdf”*, which will return a pdf file as output.
+
 
 
 **Settings:** this output will only be a message which declares the setting creation.
@@ -66,11 +122,23 @@ group_custom_settings = "Custom Settings"
 group_delete_settings = "Delete Settings"
 
 accept_hocr = Select(name="accept_hocr", label="Accept",
-                     options=["application/json", "text/html"],
+                     options=["application/json", "text/html", "application/pdf"],
                      helper="Select an output format, default='application/json'",
                      description="format and content type of the output",
                      value="application/json",
                      group=group_hocr_extraction)
+
+analyzer_hocr = AsyncSelect("analyzer_hocr", label="Analyzer",
+                       url="http://localhost:9999/routes/loko-textractor/ds4biz/textract/0.1/analyzer",
+                       helper="Select an analyzer, if not set the default analyzer settings will be used",
+                       description="An analyzer object is compose of different configurations to run the tesseract engine",
+                       group=group_hocr_extraction)
+
+pre_processing_hocr = AsyncSelect("preprocessing_hocr", label="Preprocessing",
+                             url="http://localhost:9999/routes/loko-textractor/ds4biz/textract/0.1/preprocessing",
+                             helper="Select a preprocessing, if not set no pre-processing will be done",
+                             description="A preprocessing object is compose of different configurations to prepare the input image",
+                             group=group_hocr_extraction)
 
 ####
 force_ocr = Arg("force_ocr", label="Force OCR", type="boolean",
@@ -90,10 +158,10 @@ pre_processing = AsyncSelect("preprocessing", label="Preprocessing",
                              group=group_ocr_extraction)
 
 accept = Select(name="accept", label="Accept",
-                options=["application/json", "plain/text"],
+                options=["application/json", "plain/text", "application/jsonl"],
                 helper="Select an output format, default='plain/text'",
                 description="format and content type of the output",
-                value="plain/text",
+                value="application/json",
                 group=group_ocr_extraction)
 ####
 
@@ -254,7 +322,7 @@ preproc_name_delete = AsyncSelect(name="preproc_name_delete", label="Pre-Process
 args = [force_ocr, analyzer, pre_processing, accept, settings_type, new_analyzer_name, oem_type, psm_type, lang,
         whitelist, blacklist,
         vocab_file, patterns_file, new_preprocessing_name, dpi, zoom, zoom_level, interpolation_mode,
-        analyzer_name_delete, preproc_name_delete, accept_hocr]
+        analyzer_name_delete, preproc_name_delete, analyzer_hocr, pre_processing_hocr, accept_hocr]
 
 inputs = [Input(id="ocr_extraction", service="loko_extract", to="ocr_extraction"),
           Input(id="hocr_extraction", service="loko_hocr", to="hocr_extraction"),

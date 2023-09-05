@@ -4,19 +4,21 @@ import io
 import logging
 import os
 import re
+from urllib.parse import unquote
 
 import fitz
 import sanic
 from PIL import Image
-from PyPDF2 import PdfFileMerger
+from PyPDF2 import PdfMerger
 from bs4 import BeautifulSoup as bs
 from docx import Document
 from ds4biz_format_parsers.business.converters import Email2TextEmail
 
+from business.email_parser import AsyncEmail2TextEmail
 from business.ocr import TESSERACT
 from config.app_config import PROCESS_WORKERS, DPI_DEFAULT
+from loguru import logger
 from utils.eml_utils import te2text
-from utils.logger_utils import logger
 from utils.pdf_utils import manipulate_pdf_page
 
 os.environ['OMP_THREAD_LIMIT'] = '1'
@@ -29,7 +31,6 @@ POOL = ProcessPoolExecutor(max_workers=PROCESS_WORKERS)
 class PDF2text:
     async def __call__(self, file: sanic.request.File,
                        force_extraction: bool = False, **kwargs):
-        print(file.name)
         logger.debug("force OCR extraction: %s" % str(force_extraction))
         configs = kwargs.get('configs')
         tesseract = TESSERACT(**configs)
@@ -40,6 +41,7 @@ class PDF2text:
         content = file.body
         doc = fitz.open("pdf", content)
         logger.debug(doc)
+        filename = unquote(file.name)
         for i, page in enumerate(doc):
             if force_extraction:
                 text = ''
@@ -52,30 +54,29 @@ class PDF2text:
                     img = manipulate_pdf_page(page, dpi)
                     text += await loop.run_in_executor(POOL, functools.partial(tesseract), img)
                     # text = tesseract(img)
-                    yield dict(page=i, text=text, filename=file.name)
+                    yield dict(page=i, text=text, filename=filename)
                 else:
-                    logger.debug(msg="machine readable file... getting text...")
-                    yield dict(page=i, text=text, filename=file.name)
+                    logger.debug("machine readable file... getting text...")
+                    yield dict(page=i, text=text, filename=filename)
             except Exception as inst:
                 logging.exception(inst)
                 if text:
-                    yield dict(page=i, text=text, filename=file.name)
+                    yield dict(page=i, text=text, filename=filename)
 
 
 class EML2text:
 
-    def __init__(self):
-        self.e2t = Email2TextEmail(None)
-
-    async def __call__(self, file: sanic.request.File, **kwargs):
+    async def __call__(self, file: sanic.request.File, extractor, **kwargs):
+        self.e2t = AsyncEmail2TextEmail(extractor)
         try:
             content = file.body
             if hasattr(content, "read"):
-                text = self.e2t(email.message_from_binary_file(content))
+                te = self.e2t(email.message_from_binary_file(content))
             else:
-                te = self.e2t(email.message_from_bytes(content))
-                text = te2text(te)
-            yield dict(text=text, filename=file.name)
+                te = await self.e2t(email.message_from_bytes(content))
+
+                # text = te2text(te) #???
+            yield te.__dict__
         except Exception as inst:
             logger.exception(inst)
 
@@ -89,12 +90,14 @@ class IMG2text:
 
         try:
             content = file.body
+            filename = unquote(file.name)
+
             if hasattr(content, "read"):
 
                 text = tesseract(Image.open(content))
             else:
                 text = tesseract(Image.open(io.BytesIO(content)))
-            yield dict(text=text, filename=file.name)
+            yield dict(text=text, filename=filename)
         except Exception as inst:
             logger.exception(inst)
 
@@ -105,11 +108,13 @@ class TXT2text:
         try:
             # text = textract.process(fname)
             content = file.body
+            filename = unquote(file.name)
+
             if hasattr(content, "read"):
                 text = content.read().decode('ISO-8859-1')
             else:
                 text = content.decode('ISO-8859-1')
-            yield dict(text=text, filename=file.name)
+            yield dict(text=text, filename=filename)
         except Exception as inst:
             logger.exception(inst)
 
@@ -124,11 +129,12 @@ class DOC2text:
 
     async def __call__(self, file: sanic.request.File, **kwargs):
         content = file.body
+        filename = unquote(file.name)
         if hasattr(content, "read"):
             text = self.convert(content.read())
         else:
             text = self.convert(content)
-        yield dict(text=text, filename=file.name)
+        yield dict(text=text, filename=filename)
 
     def convert(self, content):
         soup = bs(content, features="lxml")
@@ -150,6 +156,8 @@ class DOCX2text:
     async def __call__(self, file: sanic.request.File, **kwargs):
         try:
             content = file.body
+            filename = unquote(file.name)
+
             # text = textract.process(fname)
             if hasattr(content, "read"):
                 source_stream = io.StringIO(content.read())
@@ -172,7 +180,7 @@ class DOCX2text:
                     p_texts.append(p.text)
                 text = '\n'.join(p_texts)
                 # text = content.decode()
-            yield dict(text=text, filename=file.name)
+            yield dict(text=text, filename=filename)
         except Exception as inst:
             logger.exception(inst)
 
@@ -199,13 +207,15 @@ class DOCDummyConverter:
     async def __call__(self, file: sanic.request.File, **kwargs):
         try:
             content = file.body
+            filename = unquote(file.name)
+
             # text = textract.process(fname)
             if hasattr(content, "read"):
                 text = content.read().decode('latin')
             else:
                 text = content.decode('latin')
             text = self.extract(text)
-            yield dict(text=text, filename=file.name)
+            yield dict(text=text, filename=filename)
         except Exception as inst:
             logger.exception(inst)
 
@@ -233,9 +243,9 @@ class PDF2hocr:
         logger.debug("pdf to HOCR")
 
         if output == "application/pdf":
-            ret_pdf = PdfFileMerger()
+            ret_pdf = PdfMerger()
         else:
-            hocr_output = dict()
+            hocr_output = []
 
         configs = kwargs.get('configs')
         configs["hocr"] = True
@@ -249,16 +259,17 @@ class PDF2hocr:
         content = file.body
         doc = fitz.open("pdf", content)
         logger.debug(doc)
-
+        filename = unquote(file.name)
         for i, page in enumerate(doc):
             logger.info(f"Pagina {i}")
 
             img = manipulate_pdf_page(page, dpi)
             res = await loop.run_in_executor(POOL, functools.partial(tesseract), img)
+
             if output == "application/pdf":
                 ret_pdf.append(res)
             else:
-                hocr_output[str(i)] = res
+                hocr_output.append(dict(page=i, content=res, filename=filename))
         logger.debug("pdf hocr done...")
 
         if output == "application/pdf":
@@ -266,11 +277,12 @@ class PDF2hocr:
             ret_pdf.write(buffer)
             buffer.seek(0)
             return buffer
-
         return hocr_output
 
 
+
 class IMG2hocr:
+    #TODO gestire IMG2hocr con pdf e altri formati e uniformarlo al pdf2hocr a livello di struttura output
     async def __call__(self, file: sanic.request.File,
                        output, **kwargs):
 
@@ -282,13 +294,14 @@ class IMG2hocr:
 
         try:
             content = file.body
+            #filename = unquote(file.name)
             if hasattr(content, "read"):
 
                 res = tesseract(Image.open(content))
             else:
                 res = tesseract(Image.open(io.BytesIO(content)))
             if output == "application/json":
-                return res  # dict(content=res, filename=file.name)
+                return res  # dict(content=res, filename=filename)
             return res
         except Exception as inst:
             logger.exception(inst)
@@ -303,7 +316,6 @@ class ConverterFactory:
         self.mapping[ext] = value
 
     def get(self, ext):
-        print("==========", ext)
         c = dict(jpg="img", jpeg="img", png="img", tif="img", tiff="img")
         if ext.startswith(hocr_f):
             temp_ext = ext.replace(hocr_f, "")
@@ -313,7 +325,6 @@ class ConverterFactory:
             ext = c[ext]
         if ext in self.mapping:
             return self.mapping[ext]
-        print(ext)
         raise Exception('Extension not handled: {ext}'.format(ext=ext))
     #
     # try:

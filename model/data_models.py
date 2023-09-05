@@ -1,4 +1,4 @@
-from utils.logger_utils import logger
+from loguru import logger
 
 
 class PreprocessingRequest:

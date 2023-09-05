@@ -1,7 +1,7 @@
 from config.app_config import PREPROCESSING_PATH, ANALYZER_PATH, POSTPROCESSING_PATH, VOCABULARY_PATH, \
     PATTERNS_PATH
 from dao.file_system_dao import JSONFSDAO, TXTFSDAO
-from utils.logger_utils import logger
+from loguru import logger
 
 PATHS_MAPPING = dict(preprocessing=PREPROCESSING_PATH,
                      analyzer=ANALYZER_PATH,
@@ -13,7 +13,6 @@ def get_configurations_files(args: dict):
         config_name = args.get(config+'_configs')
         if config_name:
             json_fs_dao = JSONFSDAO(path)
-            config_name = config_name
             if not config_name in json_fs_dao.all():
                 raise Exception("'%s' %s configuration does not exist!")
             else:

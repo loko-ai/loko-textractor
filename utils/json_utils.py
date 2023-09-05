@@ -1,7 +1,7 @@
 import json
 import typing
 
-from utils.logger_utils import logger
+import aiostream
 
 
 class StreamString:
@@ -37,9 +37,8 @@ async def stream_json(obj,):
                 start=False
             async for el in stream_json(v):
                 yield el
-        yield "]" 
-    elif isinstance(obj, typing.AsyncGenerator):
-        logger.debug("async")
+        yield "]"
+    elif isinstance(obj, (typing.AsyncGenerator, aiostream.stream.merge)):
         yield "["
         start=True
 
